@@ -1,0 +1,192 @@
+*******************************************************************************
+What's new in this version(gvfb 1.0)
+
+08/16/2012 CLEANUP #: Cleanup before releasing the source code.
+
+07/22/2010 ENHANCEMENT #: add show/hide gtk cursor setting to menu_bar
+(ZhaolinHu)
+	* src/gvfbview.c
+
+05/21/2010 BUGFIXING #: gvfb didn't handle VFBOpenIME event.(rlzheng)
+	* src/gvfb.c
+	* src/gvfbview.c
+	* src/gvfbhdr.h
+
+04/30/2010 BUGFIXING #: Fix the bug of keypad press.(rlzheng)
+	* src/gvfb.c
+	* src/gvfbinput.c
+
+04/12/2010 BUGFIXING #4543: Fix the bug of key press.(rlzheng)
+	* src/gvfb.c
+	* src/gvfbinput.c
+	* src/gvfbinput.h
+	* src/gvfbview.c
+
+04/12/2010 BUGFIXING #4569: Fix bug that gvfb doesn't quit when MiniGUI is
+terminated.  (wanzheng)
+	* src/gvfb.c
+
+04/08/2010 BUGFIXING #4543: Fix the bug of key press.(rlzheng)
+	* src/gvfb.c
+	* src/gvfbinput.c
+	* src/gvfbinput.h
+
+04/08/2010 BUGFIXING #4544: Fix bug of SetMouseXY function.(rlzheng)
+	* src/gvfb.c
+	* src/gvfbview.c
+
+04/07/2010 BUGFIXING #4544: Fix bug of SetMouseXY function.(rlzheng)
+	* src/gvfb.c
+	* src/gvfbview.c
+
+04/06/2010 BUGFIXING #4543: Fix the bug of key press.(rlzheng)
+	* src/gvfb.c
+	* src/gvfbinput.c
+	* src/gvfbinput.h
+
+04/01/2010 BUGFIXING #4544: Add SetMouseXY function.(rlzheng)
+	* src/gvfb.c
+	* src/gvfbview.c
+	* src/gvfbview.h
+
+03/31/2010 BUGFIXING #4543: Filter the pressed-keys which are continuous.
+(rlzheng)
+	* src/gvfb.c
+	* src/gvfbinput.c
+	* src/gvfbinput.h
+
+03/30/2010 BUGFIXING #4543: Filter the pressed-keys which are continuous.
+(rlzheng)
+	* src/gvfbinput.c
+
+03/03/2010 ENHANCEMENT #6: Modify auto-fit-screen. (rlzheng)
+	* src/gvfb.h
+	* src/gvfb.c
+	* src/gvfbview.h
+	* src/gvfbview.c
+	* src/main.c
+
+03/01/2010 ENHANCEMENT #5: Auto fit screen and center show in default. (rlzheng)
+	* src/gvfb.h
+	* src/gvfb.c
+	* src/gvfbview.h
+	* src/gvfbview.c
+	* src/main.c
+
+03/01/2010 ENHANCEMENT #4: Auto fit screen when fullscreen show. (rlzheng)
+	* src/gvfbview.c
+
+02/22/2010 ENHANCEMENT #3: Set black background when fullscreen show. (rlzheng)
+	* src/gvfbview.c
+
+02/21/2010 ENHANCEMENT #2: In function get_buffer, don't need to conver the
+minigui pixel data to gtk pixel data when the color is rgba32. (rlzheng)
+	* src/gvfb.c
+
+02/20/2010 Perfect the fullscreen function. (rlzheng)
+	* src/gvfb.c
+	* src/gvfb.h
+	* src/gvfbview.c
+	* src/gvfbinput.c
+	* src/main.c
+
+02/10/2010 Add fullscreen function, and use getopt_long function to read
+options. (rlzheng)
+	* src/gvfb.h
+	* src/gvfb.c
+	* src/gvfbview.h
+	* src/gvfbview.c
+	* src/main.c
+
+02/10/2010 BUGFIXING #4512: Try to fix the sync. issue. It seems work fine now,
+but I don't know why. (wanzheng)
+	* src/gvfb.c
+
+02/09/2010 Modify scrolled window. (rlzheng)
+	* src/gvfbview.c
+
+02/08/2010 Add gvfbhdr.h to Makefile.am. (rlzheng)
+	* src/Makefile.am
+
+02/07/2010 CLEANUP #1: Remove AC_FUNC_MALLOC from configure.in (wanzheng)
+	* configure.in
+
+02/05/2010 BUGFIXING #4495: Fix the keycode to scancode map table. (rlzheng)
+	* src/gvfbinput.c
+
+02/04/2010 BUGFIXING #4494: Only when the key is SCANCODE_SPACE, send the
+unpressed keys. (rlzheng)
+	* src/gvfbinput.c
+
+02/03/2010 BUGFIXING #4483: Handling space key and other single-byte keys in
+the same way. (rlzheng)
+	* src/gvfbinput.c
+
+01/29/2010 BUGFIXING #4422: Only allow our custom function EventProc to handle
+key event, stop other handlers from being invoked for the key event. (rlzheng)
+	* src/gvfb.c
+	* src/gvfbview.c
+
+01/29/2010 BUGFIXING #4421: Ignore the key which is does't known.(rlzheng)
+	* src/gvfb.c
+	* src/gvfbinput.c
+
+01/26/2010 ENHANCEMENT #1: Don't need to scale image when scale factor is 1.
+(rlzheng)
+	* src/gvfb.c
+	* src/gvfb.h
+	* src/gvfbview.c
+
+01/26/2010 BUGFIXING #4417: Clear press keys when focus in or focus out, thus
+can fix this bug.
+BUGFIXING #4408: Add release key when press backspace, enter and so on.
+(rlzheng)
+	* src/gvfb.c
+	* src/gvfbview.c
+	* src/gvfbinput.c
+	* src/gvfbinput.h
+
+01/22/2010 Support fcitx input method.(rlzheng)
+	* src/gvfbview.c
+
+01/21/2010 BUGFIXING #4387: First maximize the window, and then recover the
+window to normal size, thus can fix this bug.(rlzheng)
+	* src/gvfb.c
+	* src/gvfbview.c
+	* src/gvfbview.h
+
+01/20/2010 To better support mStudio GUIBuilder, add the following four
+functions: 
+1. Dynamically modify the caption. 
+2. Minimize or recover the window.
+3. Users can register the given function to be called at normal process
+termination. 
+4. Users can decide whether to display the menubar.(rlzheng)
+	* src/gvfbhdr.h
+	* src/main.c
+	* src/gvfb.c
+	* src/gvfb.h
+	* src/gvfbview.c
+	* src/gvfbview.h
+
+01/14/2010 Add 4-bits, 2-bits, 1-bit color support(rlzheng)
+	* src/gvfb.c
+
+01/14/2010 Lock while get_buffer() to fix the bug that the image is out of
+sync. (wanzheng)
+	* src/gvfb.c
+
+01/13/2010 Add 8-bits color support(rlzheng)
+	* src/gvfb.c
+	* src/gvfbhdr.h
+
+01/12/2010 Fixing bug of input method(rlzheng)
+	* src/gvfbview.c
+	* src/gvfb.c
+	* src/gvfbinput.c
+	* src/gvfbview.h
+	* src/gvfbhdr.h
+	* src/gvfb.h
+
+*******************************************************************************
+01/06/2010 This is the first submission test vesion
