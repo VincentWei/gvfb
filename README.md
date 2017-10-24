@@ -1,6 +1,6 @@
 # GVFB
 
-GVFB Version 1.0.0
+GVFB Version 1.2.1
 
 This is a virtual frame buffer program running on GTK.
 
