@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 2.4)
-project(gvfb-1-2)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
+PROJECT(gvfb-1-2-1)
 
 SET (PROJECT_NAME gvfb)
 
-#add_definitions("-DDEBUG")
-#add_definitions("-DSHOW_DBG_MSG")
-#add_definitions("-DSHOW_FULL_DBG_MSG")
-#add_definitions("-DSHOW_FPS")
+#ADD_DEFINITIONS("-DDEBUG")
+#ADD_DEFINITIONS("-DSHOW_DBG_MSG")
+#ADD_DEFINITIONS("-DSHOW_FULL_DBG_MSG")
+#ADD_DEFINITIONS("-DSHOW_FPS")
 
-add_subdirectory(src)
+ADD_SUBDIRECTORY(src)
