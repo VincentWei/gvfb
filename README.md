@@ -8,17 +8,17 @@ This program (gvfb) is compliant to MiniGUI V3.0's XVFB specification.
 
 Run the following commands to install gvfb.
 
- $ cmake .
- $ make
- $ sudo make install
+	$ cmake .
+	$ make
+	$ sudo make install
 
 And then you should change something in MiniGUI.cfg:
 
-[system]
-gal_engine=pc_xvfb
+	[system]
+	gal_engine=pc_xvfb
 
-[pc_xvfb]
-defaultmode=800x600-XXbpp.argbXXXX
-window_caption=GVFB-for-MiniGUI-3.0-(Gtk-Version)
-exec_file=/usr/local/bin/gvfb
+	[pc_xvfb]
+	defaultmode=800x600-XXbpp.argbXXXX
+	window_caption=GVFB-for-MiniGUI-3.0-(Gtk-Version)
+	exec_file=/usr/local/bin/gvfb
 
