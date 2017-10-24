@@ -1,5 +1,10 @@
 *******************************************************************************
-What's new in this version(gvfb 1.0)
+What's new in this version (1.2.1)
+10/24/2017 (VincentWei)
+	* CLEANUP: Add X11 stuff in CMakeList.txt to generate correct ld options.
+
+*******************************************************************************
+What's new in this version (1.0)
 
 08/16/2012 CLEANUP #: Cleanup before releasing the source code.
 
