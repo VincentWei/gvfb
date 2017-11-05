@@ -2,9 +2,15 @@
 
 GVFB Version 1.2.1
 
-This is a virtual frame buffer program running on GTK.
+This is a virtual frame buffer program running on Gtk-2.0.
 
 This program (gvfb) is compliant to MiniGUI V3.0's XVFB specification.
+
+## Prerequisites
+
+    * Gtk-2.0 development headers and libraries (libgtk2.0-dev pkg on Ubuntu).
+
+## Building
 
 Run the following commands to install gvfb.
 
