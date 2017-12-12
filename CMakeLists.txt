@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
-PROJECT(gvfb-1-2-1)
+PROJECT(gvfb-1.2.1)
 
 SET (PROJECT_NAME gvfb)
 
@@ -9,3 +9,16 @@ SET (PROJECT_NAME gvfb)
 #ADD_DEFINITIONS("-DSHOW_FPS")
 
 ADD_SUBDIRECTORY(src)
+
+# Packing stuff
+SET(CPACK_PACKAGE_VENDOR "FMSoft")
+SET(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Universal Virtual Frame Buffer on Gtk+ 2.0")
+SET(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-1.2.1")
+SET(CPACK_SOURCE_GENERATOR "TGZ")
+set(CPACK_SOURCE_IGNORE_FILES
+      "/auto/;/cmake/;/.svn/;/.git/;/.bzr/;/CMakeFiles/;/_CPack_Packages/;CMakeCache.txt$;
+      ~$;.swp$;.cmake$;
+      ${CPACK_SOURCE_IGNORE_FILES}")
+
+INCLUDE(CPack)
