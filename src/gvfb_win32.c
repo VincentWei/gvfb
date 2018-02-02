@@ -175,15 +175,17 @@ int Send (int s, const unsigned char *buf, int len, unsigned int flags)
     return ntotal;
 }
 
+#define MAKEWORD16(low, high) ((WORD16)(((BYTE)(low)) | (((WORD16)((BYTE)(high))) << 8)))
+
 int ConnectToMiniGUI (int ppid)
 {
     int sockfd;
     struct sockaddr_in serv_ad;
 
-    WORD wVersionRequested;
+    unsigned short wVersionRequested;
     WSADATA wsaData;
 
-    wVersionRequested = MAKEWORD (2, 2);
+    wVersionRequested = MAKEWORD16 (2, 2);
 
     sockfd = INVALID_SOCKET;
 

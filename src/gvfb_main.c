@@ -258,7 +258,7 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
     /* init header */
     hdr = (GVFBHeader *) CreateShareMemory (ppid, data_size);
 
-    if ((int) hdr == -1) {
+    if ((intptr_t) hdr == -1) {
         msg_out (LEVEL_0, "CreateShareMemory error.");
 
         /* free PixelData */
