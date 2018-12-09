@@ -1017,15 +1017,23 @@ void DrawImage (int x, int y, int width, int height)
 
             frame_pixbuf = gdk_pixbuf_new_from_file (jpeg_file, NULL);
             if (frame_pixbuf) {
-                gdk_cairo_set_source_pixbuf (cr, frame_pixbuf, 0, 0);
-
                 if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0100) {
                     int zoom_level = gvfbruninfo.video_layer_mode & 0x00FF;
+                    int frame_width = gdk_pixbuf_get_width (frame_pixbuf);
+                    int frame_height = gdk_pixbuf_get_height (frame_pixbuf);
+
                     zoom_level = zoom_level / 16 + 1;
-                    if (zoom_level > 1)
-                        cairo_scale (cr, zoom_level / 4.0f, zoom_level / 4.0f);
+
+                    frame_width = (int)(frame_width * zoom_level / 4.0f);
+                    frame_height = (int)(frame_height * zoom_level / 4.0f);
+                    cairo_translate (cr,
+                            (gvfbruninfo.actual_w - frame_width)/2.0f,
+                            (gvfbruninfo.actual_h - frame_height)/2.0f);
+
+                    cairo_scale (cr, zoom_level / 4.0f, zoom_level / 4.0f);
                 }
 
+                gdk_cairo_set_source_pixbuf (cr, frame_pixbuf, 0, 0);
                 pattern = cairo_get_source (cr);
                 cairo_pattern_set_extend (pattern, CAIRO_EXTEND_NONE);
                 cairo_paint (cr);
@@ -1045,6 +1053,8 @@ void DrawImage (int x, int y, int width, int height)
                 gvfbruninfo.video_frame_idx = 0;
             }
         }
+
+        cairo_identity_matrix (cr);
 
         /* draw graphics */
         if (gvfbruninfo.zoom_percent == 100)

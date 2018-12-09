@@ -286,7 +286,7 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
     hdr->dirty_rc_b = 0;
     hdr->MSBLeft = 0;
 
-    gvfbruninfo.video_layer_mode = 0x0000;
+    gvfbruninfo.video_layer_mode = 0x0130;
     gvfbruninfo.graph_alpha_channel = 200;
     strcpy (gvfbruninfo.path_video_frames, "/srv/devel/res/video-frames/");
     gvfbruninfo.nr_video_frames = 115;
