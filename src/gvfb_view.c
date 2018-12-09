@@ -100,13 +100,13 @@ gboolean FitScnRect (int width, int height, int fit_flag)
         zoom = min (zoom_w, zoom_h);
 
         if (zoom > 0) {
-            if (zoom != gvfbruninfo.Zoom) {
-                gvfbruninfo.Zoom = zoom;
+            if (zoom != gvfbruninfo.zoom_percent) {
+                gvfbruninfo.zoom_percent = zoom;
 
                 gvfbruninfo.drawarea_w =
-                    gvfbruninfo.actual_w * gvfbruninfo.Zoom / 100;
+                    gvfbruninfo.actual_w * gvfbruninfo.zoom_percent / 100;
                 gvfbruninfo.drawarea_h =
-                    gvfbruninfo.actual_h * gvfbruninfo.Zoom / 100;
+                    gvfbruninfo.actual_h * gvfbruninfo.zoom_percent / 100;
 
                 gtk_widget_set_size_request (GTK_WIDGET (gvfbruninfo.draw_area),
                                              gvfbruninfo.drawarea_w,
@@ -308,6 +308,14 @@ gboolean GetDrawRect (GVFBRECT *draw_rect)
             return FALSE;
         }
 
+        if (gvfbruninfo.graph_with_alpha && gvfbruninfo.video_layer_mode) {
+            draw_rect->x = fix_x;
+            draw_rect->y = fix_y;
+            draw_rect->w = fix_w;
+            draw_rect->h = fix_h;
+            return TRUE;
+        }
+
         if ((fix_x > gvfbruninfo.drawarea_w)
             || (fix_y > gvfbruninfo.drawarea_h)) {
             return FALSE;
@@ -327,7 +335,6 @@ gboolean GetDrawRect (GVFBRECT *draw_rect)
 
 static gboolean expose_event (GtkWidget * window, GdkEventExpose * event)
 {
-    gboolean ret;
     GVFBRECT dirty;
     GVFBRECT draw_rect;
     gint fix_l, fix_t, fix_r, fix_b;
@@ -342,9 +349,9 @@ static gboolean expose_event (GtkWidget * window, GdkEventExpose * event)
     fix_r = min ((event->area.x + event->area.width), gvfbruninfo.drawarea_w);
     fix_b = min ((event->area.y + event->area.height), gvfbruninfo.drawarea_h);
 
-    if (gvfbruninfo.Zoom != 100) {
-        fix_r = min (fix_r, (hdr->width * gvfbruninfo.Zoom / 100));
-        fix_b = min (fix_b, (hdr->height * gvfbruninfo.Zoom / 100));
+    if (gvfbruninfo.zoom_percent != 100) {
+        fix_r = min (fix_r, (hdr->width * gvfbruninfo.zoom_percent / 100));
+        fix_b = min (fix_b, (hdr->height * gvfbruninfo.zoom_percent / 100));
     }
     else {
         fix_r = min (fix_r, hdr->width);
@@ -353,9 +360,7 @@ static gboolean expose_event (GtkWidget * window, GdkEventExpose * event)
 
     /* draw rect */
     /* fix dirty rect */
-    ret = GetDrawRect (&draw_rect);
-
-    if (ret != TRUE) {
+    if (!GetDrawRect (&draw_rect)) {
         return FALSE;
     }
 
@@ -368,7 +373,7 @@ static gboolean expose_event (GtkWidget * window, GdkEventExpose * event)
         return FALSE;
     }
 
-    if (gvfbruninfo.Zoom != 100) {
+    if (gvfbruninfo.zoom_percent != 100) {
         ScaleImage (dirty.x, dirty.y, dirty.w, dirty.h);
     }
 
@@ -429,12 +434,12 @@ GtkWidget *CreateDrawArea (gint width, gint height)
 
 GtkIMContext *CreateIMContext (GtkWidget * window)
 {
-    GtkIMContext *IMContext = NULL;
+    GtkIMContext *im_context = NULL;
 
     /* create imcontext */
-    IMContext = gtk_im_multicontext_new ();
+    im_context = gtk_im_multicontext_new ();
 
-    if (IMContext == NULL) {
+    if (im_context == NULL) {
         msg_out (LEVEL_0, "CreateIMContext Error.(gtk_im_multicontext_new)");
 
         return NULL;
@@ -442,10 +447,10 @@ GtkIMContext *CreateIMContext (GtkWidget * window)
 
     /* setup signal */
     /* commit */
-    g_signal_connect (IMContext, "commit",
+    g_signal_connect (im_context, "commit",
                       GTK_SIGNAL_FUNC (on_im_commit_cb), window);
 
-    g_signal_connect (IMContext, "preedit-end",
+    g_signal_connect (im_context, "preedit-end",
                       GTK_SIGNAL_FUNC (on_im_preedit_end_cb), window);
 
     g_signal_connect (G_OBJECT (window), "focus_in_event",
@@ -454,7 +459,7 @@ GtkIMContext *CreateIMContext (GtkWidget * window)
     g_signal_connect (G_OBJECT (window), "focus_out_event",
                       GTK_SIGNAL_FUNC (on_im_focus_event_cb), (gpointer) 0);
 
-    return IMContext;
+    return im_context;
 }
 
 /* create main wnd */
@@ -694,9 +699,9 @@ GtkWidget *CreateGVFBWindow (gint width, gint height, gint depth,
                         gvfbruninfo.sclwnd_x, gvfbruninfo.sclwnd_y);
     }
 
-    assert (gvfbruninfo.PixelData != NULL);
+    assert (gvfbruninfo.pixel_data != NULL);
 
-    gvfbruninfo.pixbuf_r = gdk_pixbuf_new_from_data (gvfbruninfo.PixelData,
+    gvfbruninfo.pixbuf_r = gdk_pixbuf_new_from_data (gvfbruninfo.pixel_data,
                                                      GDK_COLORSPACE_RGB, TRUE,
                                                      8, width, height,
                                                      width * 4, NULL, NULL);
@@ -706,15 +711,15 @@ GtkWidget *CreateGVFBWindow (gint width, gint height, gint depth,
                                            gvfbruninfo.drawarea_h);
 
     /* im context setup */
-    gvfbruninfo.IMContext = CreateIMContext (mainwnd);
+    gvfbruninfo.im_context = CreateIMContext (mainwnd);
 
-    if (gvfbruninfo.IMContext == NULL) {
+    if (gvfbruninfo.im_context == NULL) {
         msg_out (LEVEL_0, "CreateGVFBWindow error.(CreateIMContext)");
 
         return NULL;
     }
 
-    gtk_im_context_set_client_window (gvfbruninfo.IMContext, mainwnd->window);
+    gtk_im_context_set_client_window (gvfbruninfo.im_context, mainwnd->window);
 
     if (init_cursor () != TRUE) {
         return NULL;
@@ -925,9 +930,14 @@ void InitMenu (void)
 void DrawImage (int x, int y, int width, int height)
 {
     if (gvfbruninfo.graph_with_alpha) {
-        /* with alpha */
+#if 0
+        /* Gdk implementation */
+
         GdkPixmap *pixmap;
         GdkGC *gc;
+
+        cairo_t *cr;
+        const GdkPixbuf *pixbuf;
 
         int offset_x, offset_y;
 
@@ -942,40 +952,115 @@ void DrawImage (int x, int y, int width, int height)
 
         gc = gdk_gc_new (pixmap);
 
-        if (gvfbruninfo.tile_pixmap == NULL) {
-            gvfbruninfo.tile_pixmap =
+        if (gvfbruninfo.bkgnd_pixmap == NULL) {
+            gvfbruninfo.bkgnd_pixmap =
                 gdk_pixmap_create_from_xpm_d (gvfbruninfo.draw_area->window,
                                               NULL, NULL, bg_xpm);
         }
 
         gdk_gc_set_fill (gc, GDK_TILED);
-        gdk_gc_set_tile (gc, gvfbruninfo.tile_pixmap);
+        gdk_gc_set_tile (gc, gvfbruninfo.bkgnd_pixmap);
 
         gdk_draw_rectangle (pixmap, gc, TRUE, 0, 0, width + offset_x,
                             height + offset_y);
 
-        /* draw dirty */
-        if (gvfbruninfo.Zoom == 100) {
-            gdk_draw_pixbuf (pixmap, gc, gvfbruninfo.pixbuf_r, x, y, offset_x,
-                             offset_y, width, height, GDK_RGB_DITHER_NONE, 0,
-                             0);
-        }
-        else {
-            gdk_draw_pixbuf (pixmap, gc, gvfbruninfo.pixbuf_s, x, y, offset_x,
-                             offset_y, width, height, GDK_RGB_DITHER_NONE, 0,
-                             0);
-        }
-
         gdk_draw_drawable (gvfbruninfo.draw_area->window, gc, pixmap,
                            offset_x, offset_y, x, y, width, height);
 
+        /* draw dirty */
+        if (gvfbruninfo.zoom_percent == 100) {
+            pixbuf = gvfbruninfo.pixbuf_r;
+        }
+        else {
+            pixbuf = gvfbruninfo.pixbuf_s;
+        }
+
+        gdk_draw_pixbuf (pixmap, gc, pixbuf, x, y, offset_x,
+                        offset_y, width, height, GDK_RGB_DITHER_NONE, 0,
+                        0);
+
         g_object_unref (gc);
         g_object_unref (pixmap);
+#endif
+        /* Cairo implementaion */
+
+        cairo_t *cr;
+        cairo_pattern_t *pattern;
+        const GdkPixbuf *pixbuf;
+
+        cr = gdk_cairo_create (gvfbruninfo.draw_area->window);
+
+        if (gvfbruninfo.video_layer_mode == 0) {
+            /* draw default background */
+            if (gvfbruninfo.bkgnd_pixmap == NULL) {
+                gvfbruninfo.bkgnd_pixmap =
+                    gdk_pixmap_create_from_xpm_d (gvfbruninfo.draw_area->window,
+                                                  NULL, NULL, bg_xpm);
+            }
+
+            gdk_cairo_set_source_pixmap (cr, gvfbruninfo.bkgnd_pixmap, 0, 0);
+            pattern = cairo_get_source (cr);
+            cairo_pattern_set_extend (pattern, CAIRO_EXTEND_REPEAT);
+            cairo_rectangle (cr, 0, 0, gvfbruninfo.actual_w, gvfbruninfo.actual_h);
+            cairo_fill (cr);
+        }
+        else {
+            /* draw video frame */
+            char jpeg_file [PATH_MAX];
+            char file_name [16];
+            GdkPixbuf *frame_pixbuf;
+
+            sprintf (file_name, "%03d.jpg", gvfbruninfo.video_frame_idx);
+
+            strcpy (jpeg_file, gvfbruninfo.path_video_frames);
+            strcat (jpeg_file, file_name);
+
+            frame_pixbuf = gdk_pixbuf_new_from_file (jpeg_file, NULL);
+            if (frame_pixbuf) {
+                gdk_cairo_set_source_pixbuf (cr, frame_pixbuf, 0, 0);
+
+                if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0100) {
+                    int zoom_level = gvfbruninfo.video_layer_mode & 0x00FF;
+                    zoom_level = zoom_level / 16 + 1;
+                    if (zoom_level > 1)
+                        cairo_scale (cr, zoom_level / 4.0f, zoom_level / 4.0f);
+                }
+
+                pattern = cairo_get_source (cr);
+                cairo_pattern_set_extend (pattern, CAIRO_EXTEND_NONE);
+                cairo_paint (cr);
+
+                g_object_unref (frame_pixbuf);
+            }
+
+            if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0100) {
+                gvfbruninfo.video_frame_idx++;
+            }
+            else if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0200
+                    && (gvfbruninfo.video_layer_mode & 0x00FF)) {
+                gvfbruninfo.video_frame_idx++;
+            }
+
+            if (gvfbruninfo.video_frame_idx > gvfbruninfo.nr_video_frames) {
+                gvfbruninfo.video_frame_idx = 0;
+            }
+        }
+
+        /* draw graphics */
+        if (gvfbruninfo.zoom_percent == 100)
+            pixbuf = gvfbruninfo.pixbuf_r;
+        else
+            pixbuf = gvfbruninfo.pixbuf_s;
+
+        gdk_cairo_set_source_pixbuf (cr, pixbuf, 0, 0);
+        cairo_paint_with_alpha (cr, gvfbruninfo.graph_alpha_channel/255.0f);
+
+        cairo_destroy (cr);
     }
     else {
         /* without alpha */
         /* draw dirty */
-        if (gvfbruninfo.Zoom == 100) {
+        if (gvfbruninfo.zoom_percent == 100) {
             gdk_draw_pixbuf (gvfbruninfo.draw_area->window,
                              gvfbruninfo.draw_area->
                              style->fg_gc[GTK_WIDGET_STATE
@@ -1041,11 +1126,11 @@ static gboolean on_im_focus_event_cb (GtkWidget * widget, GdkEventFocus * event,
     printf ("on_im_focus_event_cb\n");
 #endif
 
-    gtk_im_context_reset (gvfbruninfo.IMContext);
+    gtk_im_context_reset (gvfbruninfo.im_context);
 
     SendUnpressedKeys ();
 
-    gtk_im_context_focus_in (gvfbruninfo.IMContext);
+    gtk_im_context_focus_in (gvfbruninfo.im_context);
 
     return TRUE;
 }

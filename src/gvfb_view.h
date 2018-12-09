@@ -127,7 +127,7 @@ gboolean GetDrawRect (GVFBRECT *drawrect);
 void FullScreen (void);
 
 /*
- * ZoomScale  : Zoom Scale.
+ * ZoomScale  : zoom_percent Scale.
  *
  * Params     : zoom
  *

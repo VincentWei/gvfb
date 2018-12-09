@@ -133,19 +133,19 @@ typedef struc {
 /* default zoom is 100 */
 static GtkRadioActionEntry radio_entries[] = {
     {"ViewZoomScale400MenuAction", NULL,
-     "Zoom Scale 4", NULL, "Zoom Scale", 400},
+     "zoom_percent Scale 4", NULL, "zoom_percent Scale", 400},
 
     {"ViewZoomScale200MenuAction", NULL,
-     "Zoom Scale 2", NULL, "Zoom Scale", 200},
+     "zoom_percent Scale 2", NULL, "zoom_percent Scale", 200},
 
     {"ViewZoomScale100MenuAction", NULL,
-     "Zoom Scale 1", NULL, "Zoom Scale", 100},
+     "zoom_percent Scale 1", NULL, "zoom_percent Scale", 100},
 
     {"ViewZoomScale050MenuAction", NULL,
-     "Zoom Scale 0.5", NULL, "Zoom Scale", 50},
+     "zoom_percent Scale 0.5", NULL, "zoom_percent Scale", 50},
 
     {"ViewZoomScale025MenuAction", NULL,
-     "Zoom Scale 0.25", NULL, "Zoom Scale", 25}
+     "zoom_percent Scale 0.25", NULL, "zoom_percent Scale", 25}
 };
 
 static guint n_radio_entries = G_N_ELEMENTS (radio_entries);

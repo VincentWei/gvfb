@@ -118,7 +118,7 @@ ACTION (on_m_refresh_rate_cb)
     gtk_widget_set_size_request (slider, 200, 60);
     gtk_scale_set_draw_value (GTK_SCALE (slider), TRUE);
     gtk_scale_set_value_pos (GTK_SCALE (slider), GTK_POS_RIGHT);
-    gtk_range_set_value (GTK_RANGE (slider), gvfbruninfo.RefreshRate);
+    gtk_range_set_value (GTK_RANGE (slider), gvfbruninfo.refresh_rate);
 
     gtk_fixed_put (GTK_FIXED (refresh_fixed), slider, 10, 0);
 
@@ -137,10 +137,10 @@ ACTION (on_m_refresh_rate_cb)
 
     /* running */
     if (gtk_dialog_run (GTK_DIALOG (fpsset_dialog)) == GTK_RESPONSE_ACCEPT) {
-        gvfbruninfo.RefreshRate =
+        gvfbruninfo.refresh_rate =
             (int) gtk_range_get_value (GTK_RANGE (slider));
 
-        assert (gvfbruninfo.RefreshRate > 0);
+        assert (gvfbruninfo.refresh_rate > 0);
     }
 
     /* destory */
@@ -210,7 +210,7 @@ TOGGLEACTION (on_m_full_screen_cb)
 
     if (gvfbruninfo.full_screen) {
         /* save old zoom */
-        myzoom = gvfbruninfo.Zoom;
+        myzoom = gvfbruninfo.zoom_percent;
 
         gtk_window_fullscreen (GTK_WINDOW (gvfbruninfo.window));
 
@@ -226,7 +226,7 @@ TOGGLEACTION (on_m_full_screen_cb)
     }
     else {
         /* release old zoom */
-        gvfbruninfo.Zoom = myzoom;
+        gvfbruninfo.zoom_percent = myzoom;
 
         gtk_window_unfullscreen (GTK_WINDOW (gvfbruninfo.window));
 
@@ -238,11 +238,11 @@ TOGGLEACTION (on_m_full_screen_cb)
         gtk_widget_modify_bg (gvfbruninfo.layout, GTK_STATE_NORMAL, &color);
 
         if (gvfbruninfo.has_skin) {
-            assert (gvfbruninfo.Zoom == 100);
+            assert (gvfbruninfo.zoom_percent == 100);
             return;
         }
 
-        ZoomScale (gvfbruninfo.Zoom);
+        ZoomScale (gvfbruninfo.zoom_percent);
 
         gtk_toggle_action_set_active (GTK_TOGGLE_ACTION (fitscreen_item),
                                       old_fit_flag);
@@ -264,7 +264,7 @@ RADIOACTION (on_m_zoom_scale_cb)
     assert (value > 0);
 
     /* set default */
-    gvfbruninfo.Zoom = value;
+    gvfbruninfo.zoom_percent = value;
 
     /* set fit screen false */
     fitscreen_item = gtk_ui_manager_get_action (gvfbruninfo.ui_manager,
@@ -272,7 +272,7 @@ RADIOACTION (on_m_zoom_scale_cb)
 
     gtk_toggle_action_set_active (GTK_TOGGLE_ACTION (fitscreen_item), FALSE);
 
-    ZoomScale (gvfbruninfo.Zoom);
+    ZoomScale (gvfbruninfo.zoom_percent);
 
     /* setup main window size */
     gvfbruninfo.main_w = gvfbruninfo.sclwnd_w;

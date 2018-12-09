@@ -283,7 +283,7 @@ int main (int argc, char *argv[])
 
     /* Create share memory and init the header */
     if (Init (ppid, width, height, depth, color_format) != 0) {
-        assert (gvfbruninfo.PixelData == NULL);
+        assert (gvfbruninfo.pixel_data == NULL);
 
         msg_out (LEVEL_0, "init error.");
 
@@ -318,7 +318,7 @@ int main (int argc, char *argv[])
     InitMenu ();
 
     /* default refresh rate */
-    assert (gvfbruninfo.RefreshRate > 0);
+    assert (gvfbruninfo.refresh_rate > 0);
 
     /* create check event thread */
     checkthread = g_thread_new ("check-event", CheckEventThread, &gvfbruninfo);

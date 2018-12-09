@@ -13,6 +13,7 @@
 #ifndef _GVFBHDR_H_
 #define _GVFBHDR_H_
 
+#include <linux/limits.h>
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 
@@ -128,12 +129,12 @@ typedef struct _GVFBRUNINFO {
     GtkWidget *scroll_win;
     GtkWidget *draw_area;
 
-    GdkPixmap *tile_pixmap;
+    GdkPixmap *bkgnd_pixmap;
 
     GdkCursor *gtkdef_cursor;
     GdkCursor *userdef_cursor;
 
-    GtkIMContext *IMContext;
+    GtkIMContext *im_context;
 
     int *palette;
 
@@ -159,12 +160,31 @@ typedef struct _GVFBRUNINFO {
 
     int fix_border;
 
+    /* graphics layer has alpha component or not */
     int graph_with_alpha;
 
-    int video_layer_enabled;
+    /*
+     * video layer mode:
+     * 0x0000 for off (grid background)
+     * 0x01xx for camera, the lower byte is the zoom level
+     * 0x02xx for video playback;
+     *       the lower byte is the current status, 1 for playing and 0 for stopped.
+     */
+    unsigned int video_layer_mode;
+
+    /* the alpha channel (0...255) if the video layer enabled */
     int graph_alpha_channel;
 
-    int RefreshRate;
+    /* the path of jpeg files located */
+    char path_video_frames [PATH_MAX];
+
+    /* the number of frame jpeg files */
+    int nr_video_frames;
+
+    /* the index of the current frame of simulation video */
+    int video_frame_idx;
+
+    int refresh_rate;
 
     /* screen size */
     int screen_w;
@@ -196,9 +216,10 @@ typedef struct _GVFBRUNINFO {
     int actual_w;
     int actual_h;
 
-    int Zoom;                 /* the zoom percentage */
+    /* the zoom percentage */
+    int zoom_percent;
 
-    unsigned char *PixelData;
+    unsigned char *pixel_data;
     GdkPixbuf *pixbuf_r;
     GdkPixbuf *pixbuf_s;
 

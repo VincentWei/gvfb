@@ -67,7 +67,7 @@ static int is_default_color = 0;
 /* set capslock state */
 static void set_capslock (void);
 static void set_palette (void);
-/* Read data from buffer and save them to PixelData */
+/* Read data from buffer and save them to pixel_data */
 static void get_pixbuf_data (int x, int y, int width, int height);
 static void set_dirty (int flag, int l, int t, int r, int b);
 static void draw_dirty_rect (void);
@@ -140,14 +140,14 @@ void InitRunInfo ()
     gvfbruninfo.fit_screen = TRUE;
 
     /* default is not zoom */
-    gvfbruninfo.Zoom = 100;
+    gvfbruninfo.zoom_percent = 100;
 
     /* set screen size */
     gvfbruninfo.screen_w = 0;
     gvfbruninfo.screen_h = 0;
 
     gvfbruninfo.shmid = -1;
-    gvfbruninfo.PixelData = NULL;
+    gvfbruninfo.pixel_data = NULL;
 
     gvfbruninfo.drawarea_x = 0;
     gvfbruninfo.drawarea_y = 0;
@@ -162,8 +162,8 @@ void InitRunInfo ()
 
     /* refresh rate */
     gvfbruninfo.window = NULL;
-    gvfbruninfo.RefreshRate = OPT_REFRESHRATE;
-    gvfbruninfo.tile_pixmap = NULL;
+    gvfbruninfo.refresh_rate = OPT_REFRESHRATE;
+    gvfbruninfo.bkgnd_pixmap = NULL;
 }
 
 void UnInitRunInfo ()
@@ -230,10 +230,10 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
     int nr_entry = 0;
 
     /* malloc Pixel buffer */
-    gvfbruninfo.PixelData = (unsigned char *) malloc (width * height * 4);
+    gvfbruninfo.pixel_data = (unsigned char *) malloc (width * height * 4);
 
-    if (gvfbruninfo.PixelData == NULL) {
-        msg_out (LEVEL_0, "cannot malloc memory.(PixelData)");
+    if (gvfbruninfo.pixel_data == NULL) {
+        msg_out (LEVEL_0, "cannot malloc memory.(pixel_data)");
 
         return -1;
     }
@@ -261,9 +261,9 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
     if ((intptr_t) hdr == -1) {
         msg_out (LEVEL_0, "CreateShareMemory error.");
 
-        /* free PixelData */
-        free (gvfbruninfo.PixelData);
-        gvfbruninfo.PixelData = NULL;
+        /* free pixel_data */
+        free (gvfbruninfo.pixel_data);
+        gvfbruninfo.pixel_data = NULL;
 
         return -1;
     }
@@ -286,6 +286,12 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
     hdr->dirty_rc_b = 0;
     hdr->MSBLeft = 0;
 
+    gvfbruninfo.video_layer_mode = 0x0000;
+    gvfbruninfo.graph_alpha_channel = 200;
+    strcpy (gvfbruninfo.path_video_frames, "/srv/devel/res/video-frames/");
+    gvfbruninfo.nr_video_frames = 115;
+    gvfbruninfo.video_frame_idx = 0;
+
     if (depth > 8) {
         format_index = GetColorFormatIndex (depth, color_format);
 
@@ -297,9 +303,9 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
             /* Destroy Share memorry */
             DestroyShareMemory ();
 
-            /* free PixelData */
-            free (gvfbruninfo.PixelData);
-            gvfbruninfo.PixelData = NULL;
+            /* free pixel_data */
+            free (gvfbruninfo.pixel_data);
+            gvfbruninfo.pixel_data = NULL;
 
             return -1;
         }
@@ -369,9 +375,9 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
         /* Destroy Share memorry */
         DestroyShareMemory ();
 
-        /* free PixelData */
-        free (gvfbruninfo.PixelData);
-        gvfbruninfo.PixelData = NULL;
+        /* free pixel_data */
+        free (gvfbruninfo.pixel_data);
+        gvfbruninfo.pixel_data = NULL;
 
         return -1;
     }
@@ -391,9 +397,9 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
         /* Destroy Share memorry */
         DestroyShareMemory ();
 
-        /* free PixelData */
-        free (gvfbruninfo.PixelData);
-        gvfbruninfo.PixelData = NULL;
+        /* free pixel_data */
+        free (gvfbruninfo.pixel_data);
+        gvfbruninfo.pixel_data = NULL;
 
         return -1;
     }
@@ -421,9 +427,9 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
             /* Destroy Share memorry */
             DestroyShareMemory ();
 
-            /* free PixelData */
-            free (gvfbruninfo.PixelData);
-            gvfbruninfo.PixelData = NULL;
+            /* free pixel_data */
+            free (gvfbruninfo.pixel_data);
+            gvfbruninfo.pixel_data = NULL;
 
             return -1;
         }       /* end if */
@@ -445,9 +451,9 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
         /* Destroy Share memorry */
         DestroyShareMemory ();
 
-        /* free PixelData */
-        free (gvfbruninfo.PixelData);
-        gvfbruninfo.PixelData = NULL;
+        /* free pixel_data */
+        free (gvfbruninfo.pixel_data);
+        gvfbruninfo.pixel_data = NULL;
 
         free (gvfbruninfo.palette);
         gvfbruninfo.palette = NULL;
@@ -474,10 +480,10 @@ void UnInit ()
         gvfbruninfo.sockfd = -1;
     }
 
-    if (gvfbruninfo.PixelData != NULL) {
-        /* free PixelData */
-        free (gvfbruninfo.PixelData);
-        gvfbruninfo.PixelData = NULL;
+    if (gvfbruninfo.pixel_data != NULL) {
+        /* free pixel_data */
+        free (gvfbruninfo.pixel_data);
+        gvfbruninfo.pixel_data = NULL;
     }
 
     /* Destroy Share memorry */
@@ -503,8 +509,8 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
         printf ("catch GDK_BUTTON_PRESS event\n");
 #endif
 
-        x = (int) (event->button.x * 100 / gvfbruninfo.Zoom);
-        y = (int) (event->button.y * 100 / gvfbruninfo.Zoom);
+        x = (int) (event->button.x * 100 / gvfbruninfo.zoom_percent);
+        y = (int) (event->button.y * 100 / gvfbruninfo.zoom_percent);
 
         button = event->button.button;
 
@@ -530,8 +536,8 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
         printf ("catch GDK_BUTTON_RELEASE event\n");
 #endif
 
-        x = (int) (event->button.x * 100 / gvfbruninfo.Zoom);
-        y = (int) (event->button.y * 100 / gvfbruninfo.Zoom);
+        x = (int) (event->button.x * 100 / gvfbruninfo.zoom_percent);
+        y = (int) (event->button.y * 100 / gvfbruninfo.zoom_percent);
 
         button = event->button.button;
 
@@ -549,8 +555,8 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
         printf ("catch GDK_2BUTTON_PRESS event\n");
 #endif
 
-        x = (int) (event->button.x * 100 / gvfbruninfo.Zoom);
-        y = (int) (event->button.y * 100 / gvfbruninfo.Zoom);
+        x = (int) (event->button.x * 100 / gvfbruninfo.zoom_percent);
+        y = (int) (event->button.y * 100 / gvfbruninfo.zoom_percent);
 
         button = event->button.button;
 
@@ -572,8 +578,8 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
         //printf ("catch GDK_MOTION_NOTIFY event\n");
 #endif
 
-        x = (int) (event->button.x * 100 / gvfbruninfo.Zoom);
-        y = (int) (event->button.y * 100 / gvfbruninfo.Zoom);
+        x = (int) (event->button.x * 100 / gvfbruninfo.zoom_percent);
+        y = (int) (event->button.y * 100 / gvfbruninfo.zoom_percent);
 
         /* if press and hold down the left mouse */
         if (button_press) {
@@ -608,7 +614,7 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
         printf ("got GDK_KEY_PRESS %x\n", keycode);
 #endif
 #if 0
-        if (gtk_im_context_filter_keypress (gvfbruninfo.IMContext, &event->key)) {
+        if (gtk_im_context_filter_keypress (gvfbruninfo.im_context, &event->key)) {
             return TRUE;
         }
 #endif
@@ -672,14 +678,14 @@ void ScaleImage (int x, int y, int width, int height)
     if (gvfbruninfo.fastmode == TRUE) {
         gdk_pixbuf_scale (gvfbruninfo.pixbuf_r, gvfbruninfo.pixbuf_s, x, y,
                           width, height, 0.0, 0.0,
-                          (double) gvfbruninfo.Zoom / 100,
-                          (double) gvfbruninfo.Zoom / 100, GDK_INTERP_NEAREST);
+                          (double) gvfbruninfo.zoom_percent / 100,
+                          (double) gvfbruninfo.zoom_percent / 100, GDK_INTERP_NEAREST);
     }
     else {
         gdk_pixbuf_scale (gvfbruninfo.pixbuf_r, gvfbruninfo.pixbuf_s, x, y,
                           width, height, 0.0, 0.0,
-                          (double) gvfbruninfo.Zoom / 100,
-                          (double) gvfbruninfo.Zoom / 100, GDK_INTERP_TILES);
+                          (double) gvfbruninfo.zoom_percent / 100,
+                          (double) gvfbruninfo.zoom_percent / 100, GDK_INTERP_TILES);
     }
 }
 
@@ -973,7 +979,7 @@ void *DrawDirtyThread (void *args)
 
     assert (hdr != NULL);
 
-    spf = 1000 / runinfo->RefreshRate;
+    spf = 1000 / runinfo->refresh_rate;
 
 #ifdef SHOW_FPS
     /* begin debug */
@@ -984,7 +990,7 @@ void *DrawDirtyThread (void *args)
 #endif
 
     while (runinfo->running) {
-        assert (runinfo->RefreshRate > 0);
+        assert (runinfo->refresh_rate > 0);
 
 #ifdef SHOW_FPS
         /* begin debug */
@@ -1003,9 +1009,9 @@ void *DrawDirtyThread (void *args)
         /* end debug */
 #endif
 
-        spf = 1000 / runinfo->RefreshRate;
+        spf = 1000 / runinfo->refresh_rate;
 
-        if (hdr->dirty != 0) {
+        if (hdr->dirty != 0 || (gvfbruninfo.graph_with_alpha && gvfbruninfo.video_layer_mode)) {
             start = GVFBGetCurrentTime ();
 
             gdk_threads_enter ();
@@ -1060,7 +1066,7 @@ void SaveImage (const char *filename)
 
     assert (filename != NULL);
 
-    pixbuf = gdk_pixbuf_new_from_data (gvfbruninfo.PixelData,
+    pixbuf = gdk_pixbuf_new_from_data (gvfbruninfo.pixel_data,
                                        GDK_COLORSPACE_RGB, TRUE, 8,
                                        hdr->width, hdr->height, hdr->width * 4,
                                        NULL, NULL);
@@ -1187,10 +1193,10 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                     for (k = 0; k < 32; k += 4) {
                         pixel_data = gvfbruninfo.palette[temp >> 7];
 
-                        gvfbruninfo.PixelData[index + i + k] = pixel_data;
-                        gvfbruninfo.PixelData[index + i + k + 1] = pixel_data;
-                        gvfbruninfo.PixelData[index + i + k + 2] = pixel_data;
-                        gvfbruninfo.PixelData[index + i + k + 3] = 0xff;
+                        gvfbruninfo.pixel_data[index + i + k] = pixel_data;
+                        gvfbruninfo.pixel_data[index + i + k + 1] = pixel_data;
+                        gvfbruninfo.pixel_data[index + i + k + 2] = pixel_data;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp <<= 1;
                     }   /* end for */
@@ -1208,10 +1214,10 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                     for (k = 0; k < 32; k += 4) {
                         pixel_data = gvfbruninfo.palette[temp & 0x1];
 
-                        gvfbruninfo.PixelData[index + i + k] = pixel_data;
-                        gvfbruninfo.PixelData[index + i + k + 1] = pixel_data;
-                        gvfbruninfo.PixelData[index + i + k + 2] = pixel_data;
-                        gvfbruninfo.PixelData[index + i + k + 3] = 0xff;
+                        gvfbruninfo.pixel_data[index + i + k] = pixel_data;
+                        gvfbruninfo.pixel_data[index + i + k + 1] = pixel_data;
+                        gvfbruninfo.pixel_data[index + i + k + 2] = pixel_data;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp >>= 1;
                     }   /* end for */
@@ -1250,13 +1256,13 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                     for (k = 0; k < 16; k += 4) {
                         pixel_data = gvfbruninfo.palette[temp >> 6];
 
-                        gvfbruninfo.PixelData[index + i + k] =
+                        gvfbruninfo.pixel_data[index + i + k] =
                             (pixel_data >> 16) & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 1] =
+                        gvfbruninfo.pixel_data[index + i + k + 1] =
                             (pixel_data >> 8) & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 2] =
+                        gvfbruninfo.pixel_data[index + i + k + 2] =
                             pixel_data & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 3] = 0xff;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp <<= 2;
                     }
@@ -1274,13 +1280,13 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                     for (k = 0; k < 16; k += 4) {
                         pixel_data = gvfbruninfo.palette[temp & 0x03];
 
-                        gvfbruninfo.PixelData[index + i + k] =
+                        gvfbruninfo.pixel_data[index + i + k] =
                             (pixel_data >> 16) & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 1] =
+                        gvfbruninfo.pixel_data[index + i + k + 1] =
                             (pixel_data >> 8) & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 2] =
+                        gvfbruninfo.pixel_data[index + i + k + 2] =
                             pixel_data & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 3] = 0xff;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp >>= 2;
                     }   /* end for */
@@ -1319,13 +1325,13 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                     for (k = 0; k < 8; k += 4) {
                         pixel_data = gvfbruninfo.palette[temp >> 4];
 
-                        gvfbruninfo.PixelData[index + i + k] =
+                        gvfbruninfo.pixel_data[index + i + k] =
                             (pixel_data >> 16) & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 1] =
+                        gvfbruninfo.pixel_data[index + i + k + 1] =
                             (pixel_data >> 8) & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 2] =
+                        gvfbruninfo.pixel_data[index + i + k + 2] =
                             pixel_data & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 3] = 0xff;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp <<= 4;
                     }
@@ -1343,13 +1349,13 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                     for (k = 0; k < 8; k += 4) {
                         pixel_data = gvfbruninfo.palette[temp & 0x0f];
 
-                        gvfbruninfo.PixelData[index + i + k] =
+                        gvfbruninfo.pixel_data[index + i + k] =
                             (pixel_data >> 16) & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 1] =
+                        gvfbruninfo.pixel_data[index + i + k + 1] =
                             (pixel_data >> 8) & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 2] =
+                        gvfbruninfo.pixel_data[index + i + k + 2] =
                             pixel_data & 0xff;
-                        gvfbruninfo.PixelData[index + i + k + 3] = 0xff;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp >>= 4;
                     }
@@ -1372,10 +1378,10 @@ static void get_pixbuf_data (int x, int y, int width, int height)
 
                 pixel_data = gvfbruninfo.palette[temp];
 
-                gvfbruninfo.PixelData[index + i] = (pixel_data >> 16) & 0xff;
-                gvfbruninfo.PixelData[index + i + 1] = (pixel_data >> 8) & 0xff;
-                gvfbruninfo.PixelData[index + i + 2] = pixel_data & 0xff;
-                gvfbruninfo.PixelData[index + i + 3] = 0xff;
+                gvfbruninfo.pixel_data[index + i] = (pixel_data >> 16) & 0xff;
+                gvfbruninfo.pixel_data[index + i + 1] = (pixel_data >> 8) & 0xff;
+                gvfbruninfo.pixel_data[index + i + 2] = pixel_data & 0xff;
+                gvfbruninfo.pixel_data[index + i + 3] = 0xff;
             }
 
             start_at += hdr->pitch;
@@ -1394,7 +1400,7 @@ static void get_pixbuf_data (int x, int y, int width, int height)
 
                 for (k = 0; k < 4; k++) {
                     temp = (pixel_data & s_mask[k]) >> s_shift[k];
-                    gvfbruninfo.PixelData[index + i + k] =
+                    gvfbruninfo.pixel_data[index + i + k] =
                         (unsigned char) (s_color_map_table[k][temp]);
                 }
             }
@@ -1407,7 +1413,7 @@ static void get_pixbuf_data (int x, int y, int width, int height)
         /* depth = 32 */
         if (is_default_color) {
             start_at = (unsigned char *) hdr + hdr->fb_offset;
-            memcpy (gvfbruninfo.PixelData, start_at, hdr->pitch * hdr->height);
+            memcpy (gvfbruninfo.pixel_data, start_at, hdr->pitch * hdr->height);
             break;
         }
 
@@ -1421,7 +1427,7 @@ static void get_pixbuf_data (int x, int y, int width, int height)
 
                 for (k = 0; k < 4; k++) {
                     temp = (pixel_data & s_mask[k]) >> s_shift[k];
-                    gvfbruninfo.PixelData[index + i + k] =
+                    gvfbruninfo.pixel_data[index + i + k] =
                         (unsigned char) (s_color_map_table[k][temp]);
                 }
             }
@@ -1437,7 +1443,6 @@ static void get_pixbuf_data (int x, int y, int width, int height)
 
 static void draw_dirty_rect (void)
 {
-    gboolean ret;
     GVFBRECT dirty;
     GVFBRECT draw_rect;
     gint fix_l, fix_t, fix_r, fix_b;
@@ -1465,37 +1470,43 @@ static void draw_dirty_rect (void)
 
     UnLock ();
 
-    if (gvfbruninfo.Zoom != 100) {
-        fix_l = fix_l * gvfbruninfo.Zoom / 100;
-        fix_t = fix_t * gvfbruninfo.Zoom / 100;
+    if (gvfbruninfo.zoom_percent != 100) {
+        fix_l = fix_l * gvfbruninfo.zoom_percent / 100;
+        fix_t = fix_t * gvfbruninfo.zoom_percent / 100;
 
-        fix_r = (((fix_r * gvfbruninfo.Zoom) % 100) == 0) ?
-            (fix_r * gvfbruninfo.Zoom / 100) :
-            ((fix_r + 1) * gvfbruninfo.Zoom / 100);
-        fix_b = (((fix_b * gvfbruninfo.Zoom) % 100) == 0) ?
-            (fix_b * gvfbruninfo.Zoom / 100) :
-            ((fix_b + 1) * gvfbruninfo.Zoom / 100);
+        fix_r = (((fix_r * gvfbruninfo.zoom_percent) % 100) == 0) ?
+            (fix_r * gvfbruninfo.zoom_percent / 100) :
+            ((fix_r + 1) * gvfbruninfo.zoom_percent / 100);
+        fix_b = (((fix_b * gvfbruninfo.zoom_percent) % 100) == 0) ?
+            (fix_b * gvfbruninfo.zoom_percent / 100) :
+            ((fix_b + 1) * gvfbruninfo.zoom_percent / 100);
     }
 
     /* draw rect */
     /* fix dirty rect */
-    ret = GetDrawRect (&draw_rect);
-
-    if (ret != TRUE) {
+    if (!GetDrawRect (&draw_rect)) {
         return;
     }
 
-    dirty.x = max (fix_l, draw_rect.x);
-    dirty.y = max (fix_t, draw_rect.y);
-    dirty.w = min (fix_r, (draw_rect.x + draw_rect.w)) - dirty.x;
-    dirty.h = min (fix_b, (draw_rect.y + draw_rect.h)) - dirty.y;
+    if (gvfbruninfo.graph_with_alpha && gvfbruninfo.video_layer_mode) {
+        dirty.x = draw_rect.x;
+        dirty.y = draw_rect.y;
+        dirty.w = draw_rect.w;
+        dirty.h = draw_rect.h;
+    }
+    else {
+        dirty.x = max (fix_l, draw_rect.x);
+        dirty.y = max (fix_t, draw_rect.y);
+        dirty.w = min (fix_r, (draw_rect.x + draw_rect.w)) - dirty.x;
+        dirty.h = min (fix_b, (draw_rect.y + draw_rect.h)) - dirty.y;
 
-    /* check dirty rect */
-    if ((dirty.x < 0) || (dirty.y < 0) || (dirty.w <= 0) || (dirty.h <= 0)) {
-        return;
+        /* check dirty rect */
+        if ((dirty.x < 0) || (dirty.y < 0) || (dirty.w <= 0) || (dirty.h <= 0)) {
+            return;
+        }
     }
 
-    if (gvfbruninfo.Zoom != 100) {
+    if (gvfbruninfo.zoom_percent != 100) {
         ScaleImage (dirty.x, dirty.y, dirty.w, dirty.h);
     }
 
