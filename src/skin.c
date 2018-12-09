@@ -243,7 +243,7 @@ void UnInitSkin ()
             continue;
         }
 
-        gdk_pixbuf_unref (g_gvfbskin->pixbufs[i]);
+        g_object_unref (g_gvfbskin->pixbufs[i]);
         g_gvfbskin->pixbufs[i] = NULL;
     }
 

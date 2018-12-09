@@ -198,10 +198,12 @@ int main (int argc, char *argv[])
         }
     }
 
+#if 0
     /* init thread support */
     if (!g_thread_supported ()) {
         g_thread_init (NULL);
     }
+#endif
 
     gdk_threads_init ();
 
@@ -319,10 +321,12 @@ int main (int argc, char *argv[])
     assert (gvfbruninfo.RefreshRate > 0);
 
     /* create check event thread */
-    checkthread = g_thread_create (CheckEventThread, &gvfbruninfo, TRUE, NULL);
+    checkthread = g_thread_new ("check-event", CheckEventThread, &gvfbruninfo);
 
+#if 0
     /* set it to low priority */
     g_thread_set_priority (checkthread, G_THREAD_PRIORITY_LOW);
+#endif
 
     /* setup key press thread */
     g_timeout_add (1000 / 100, KeyPressTimeout, NULL);

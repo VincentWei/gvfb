@@ -159,7 +159,10 @@ typedef struct _GVFBRUNINFO {
 
     int fix_border;
 
-    int WithAlpha;
+    int graph_with_alpha;
+
+    int video_layer_enabled;
+    int graph_alpha_channel;
 
     int RefreshRate;
 

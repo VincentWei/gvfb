@@ -924,7 +924,7 @@ void InitMenu (void)
 
 void DrawImage (int x, int y, int width, int height)
 {
-    if (gvfbruninfo.WithAlpha) {
+    if (gvfbruninfo.graph_with_alpha) {
         /* with alpha */
         GdkPixmap *pixmap;
         GdkGC *gc;

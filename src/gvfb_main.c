@@ -315,7 +315,7 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
         s_mask[A] = hdr->Amask = s_color_format_table[format_index].mask[A];
 
         if (s_mask[A]) {
-            gvfbruninfo.WithAlpha = TRUE;
+            gvfbruninfo.graph_with_alpha = TRUE;
         }
 
         /* Calculate rgba shift and bit */
@@ -730,8 +730,10 @@ void *CheckEventThread (void *args)
     gdk_threads_leave ();
 
     /* create draw dirty thread */
-    drawthread = g_thread_create (DrawDirtyThread, args, TRUE, NULL);
+    drawthread = g_thread_new ("draw-dirty", DrawDirtyThread, args);
+#if 0
     g_thread_set_priority (drawthread, G_THREAD_PRIORITY_LOW);
+#endif
 
     /* running */
     while (runinfo->running) {
@@ -1070,7 +1072,7 @@ void SaveImage (const char *filename)
     gdk_pixbuf_save (pixbuf, filename, "png", NULL,
                      "tEXt::Software", "testpixbuf-save", NULL);
 
-    gdk_pixbuf_unref (pixbuf);
+    g_object_unref (pixbuf);
 }
 
 static void set_palette (void)
