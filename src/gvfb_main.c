@@ -17,10 +17,12 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 /* for gtk */
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
+#include <gio/gunixinputstream.h>
 
 #include <assert.h>
 
@@ -215,6 +217,73 @@ int GetColorFormatIndex (int depth, const char *color_format)
     return index;
 }
 
+static gboolean init_motion_jpeg (const char* file_name)
+{
+    gvfbruninfo.motion_jpeg_stream = NULL;
+    gvfbruninfo.motion_jpeg_info = NULL;
+
+    GFile* file = g_file_new_for_path (file_name);
+    gvfbruninfo.motion_jpeg_stream = g_file_read (file, NULL, NULL);
+
+    if (gvfbruninfo.motion_jpeg_stream) {
+        gsize my_size;
+        gssize bytes_read;
+
+        my_size = sizeof (MotionJPEGInfo);
+        gvfbruninfo.motion_jpeg_info = (MotionJPEGInfo*)malloc (my_size);
+
+        if (gvfbruninfo.motion_jpeg_stream && gvfbruninfo.motion_jpeg_info) {
+            bytes_read = g_input_stream_read (
+                G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
+                &gvfbruninfo.motion_jpeg_info, my_size, NULL, NULL);
+
+            if ((gsize)bytes_read == my_size &&
+                    gvfbruninfo.motion_jpeg_info->nr_frames > 0) {
+                void* tmp;
+
+                my_size = sizeof (MotionJPEGInfo) +
+                    sizeof (guint32) * gvfbruninfo.motion_jpeg_info->nr_frames;
+                tmp = realloc (gvfbruninfo.motion_jpeg_info, my_size);
+                if (tmp == NULL)
+                    goto error;
+
+                gvfbruninfo.motion_jpeg_info = (MotionJPEGInfo*)tmp;
+                bytes_read = g_input_stream_read (
+                        G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
+                        gvfbruninfo.motion_jpeg_info->frame_offset,
+                        my_size, NULL, NULL);
+
+                if ((gsize)bytes_read != my_size)
+                    goto error;
+            }
+            else {
+                goto error;
+            }
+        }
+        else {
+            goto error;
+        }
+
+        g_object_unref (file);
+        gvfbruninfo.video_frame_idx = 0;
+        return TRUE;
+    }
+
+error:
+    g_object_unref (file);
+    if (gvfbruninfo.motion_jpeg_info) {
+        free (gvfbruninfo.motion_jpeg_info);
+        gvfbruninfo.motion_jpeg_info = NULL;
+    }
+
+    if (gvfbruninfo.motion_jpeg_stream) {
+        g_object_unref (gvfbruninfo.motion_jpeg_stream);
+        gvfbruninfo.motion_jpeg_stream = NULL;
+    }
+
+    return FALSE;
+}
+
 /* Init */
 int Init (int ppid, int width, int height, int depth, const char *color_format)
 {
@@ -285,12 +354,6 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
     hdr->dirty_rc_r = 0;
     hdr->dirty_rc_b = 0;
     hdr->MSBLeft = 0;
-
-    gvfbruninfo.video_layer_mode = 0x0130;
-    gvfbruninfo.graph_alpha_channel = 200;
-    strcpy (gvfbruninfo.path_video_frames, "/srv/devel/res/video-frames/");
-    gvfbruninfo.nr_video_frames = 115;
-    gvfbruninfo.video_frame_idx = 0;
 
     if (depth > 8) {
         format_index = GetColorFormatIndex (depth, color_format);
@@ -461,6 +524,46 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
         return -1;
     }
 
+#ifdef WIN32
+    gvfbruninfo.video_layer_mode = 0x0000;
+    gvfbruninfo.graph_alpha_channel = 127;
+#else
+    gvfbruninfo.video_layer_mode = 0x0130;
+    gvfbruninfo.graph_alpha_channel = 127;
+    init_motion_jpeg ("/srv/devel/res/video-frames/test.mjpg");
+
+    gvfbruninfo.vvls_sockfd = -1;
+    gvfbruninfo.vvlc_sockfd = -1;
+
+    {
+        struct sockaddr_un server_address;
+        gvfbruninfo.vvls_sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
+        if (gvfbruninfo.vvls_sockfd >= 0) {
+            server_address.sun_family = AF_UNIX;
+            unlink (SOCKET_VVLS);
+            strcpy (server_address.sun_path, SOCKET_VVLS);
+
+            if (bind (gvfbruninfo.vvls_sockfd,
+                    (struct sockaddr *)&server_address,
+                    sizeof (server_address) >= 0)) {
+                if (listen (gvfbruninfo.vvls_sockfd, 1) < 0) {
+                    msg_out (LEVEL_0, "Failed to listen to VVLS socket.");
+                    close (gvfbruninfo.vvls_sockfd);
+                    gvfbruninfo.vvls_sockfd = -1;
+                }
+            }
+            else {
+                msg_out (LEVEL_0, "Failed to bind to VVLS socket.");
+                close (gvfbruninfo.vvls_sockfd);
+                gvfbruninfo.vvls_sockfd = -1;
+            }
+        }
+        else {
+            msg_out (LEVEL_0, "Failed to create VVLS socket.");
+        }
+    }
+#endif
+
     return 0;
 }
 
@@ -468,6 +571,28 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
 void UnInit ()
 {
     UnInitLock (0);
+
+    if (gvfbruninfo.motion_jpeg_info) {
+        free (gvfbruninfo.motion_jpeg_info);
+        gvfbruninfo.motion_jpeg_info = NULL;
+    }
+
+    if (gvfbruninfo.motion_jpeg_stream) {
+        g_object_unref (gvfbruninfo.motion_jpeg_stream);
+        gvfbruninfo.motion_jpeg_stream = NULL;
+    }
+
+#ifdef WIN32
+    if (gvfbruninfo.vvls_sockfd >= 0) {
+        close (gvfbruninfo.vvls_sockfd);
+        gvfbruninfo.vvls_sockfd = -1;
+    }
+
+    if (gvfbruninfo.vvlc_sockfd >= 0) {
+        close (gvfbruninfo.vvlc_sockfd);
+        gvfbruninfo.vvlc_sockfd = -1;
+    }
+#endif
 
     if (gvfbruninfo.sockfd != -1) {
 #ifdef WIN32

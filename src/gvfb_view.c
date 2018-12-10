@@ -1004,18 +1004,15 @@ void DrawImage (int x, int y, int width, int height)
             cairo_rectangle (cr, 0, 0, gvfbruninfo.actual_w, gvfbruninfo.actual_h);
             cairo_fill (cr);
         }
-        else {
+        else if (gvfbruninfo.motion_jpeg_info && gvfbruninfo.motion_jpeg_stream) {
             /* draw video frame */
-            char jpeg_file [PATH_MAX];
-            char file_name [16];
             GdkPixbuf *frame_pixbuf;
 
-            sprintf (file_name, "%03d.jpg", gvfbruninfo.video_frame_idx);
+            g_seekable_seek (G_SEEKABLE(gvfbruninfo.motion_jpeg_stream),
+                    (goffset)gvfbruninfo.motion_jpeg_info->frame_offset[gvfbruninfo.video_frame_idx],
+                    G_SEEK_SET, NULL, NULL);
 
-            strcpy (jpeg_file, gvfbruninfo.path_video_frames);
-            strcat (jpeg_file, file_name);
-
-            frame_pixbuf = gdk_pixbuf_new_from_file (jpeg_file, NULL);
+            frame_pixbuf = gdk_pixbuf_new_from_stream (G_INPUT_STREAM(gvfbruninfo.motion_jpeg_stream), NULL, NULL);
             if (frame_pixbuf) {
                 if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0100) {
                     int zoom_level = gvfbruninfo.video_layer_mode & 0x00FF;
@@ -1049,7 +1046,7 @@ void DrawImage (int x, int y, int width, int height)
                 gvfbruninfo.video_frame_idx++;
             }
 
-            if (gvfbruninfo.video_frame_idx > gvfbruninfo.nr_video_frames) {
+            if (gvfbruninfo.video_frame_idx > gvfbruninfo.motion_jpeg_info->nr_frames) {
                 gvfbruninfo.video_frame_idx = 0;
             }
         }

@@ -108,6 +108,12 @@ typedef struct _GVFBPalEntry {
     unsigned char a;
 } GVFBPalEntry;
 
+typedef struct _MotionJPEGInfo {
+    guint16     nr_frames;
+    guint16     frame_rate;
+    guint32     frame_offset [0];
+} MotionJPEGInfo;
+
 /* runinfo of gvfb */
 typedef struct _GVFBRUNINFO {
     /* running flag */
@@ -163,23 +169,33 @@ typedef struct _GVFBRUNINFO {
     /* graphics layer has alpha component or not */
     int graph_with_alpha;
 
+#ifndef WIN32
+#   define SOCKET_VVLS     "/tmp/pcxvvl_socket"
+    /* file descriptor of the unix socket for virtual video layer server */
+    int vvls_sockfd;
+
+    /* file descriptor of the unix socket for virtual video layer client */
+    int vvlc_sockfd;
+#endif
+
     /*
      * video layer mode:
      * 0x0000 for off (grid background)
      * 0x01xx for camera, the lower byte is the zoom level
      * 0x02xx for video playback;
-     *       the lower byte is the current status, 1 for playing and 0 for stopped.
+     *       the lower byte is the current status,
+     *       1 for playing and 0 for stopped.
      */
     unsigned int video_layer_mode;
 
     /* the alpha channel (0...255) if the video layer enabled */
     int graph_alpha_channel;
 
-    /* the path of jpeg files located */
-    char path_video_frames [PATH_MAX];
+    /* the motion jpeg stream */
+    GFileInputStream *motion_jpeg_stream;
 
-    /* the number of frame jpeg files */
-    int nr_video_frames;
+    /* the motion jpeg information */
+    MotionJPEGInfo *motion_jpeg_info;
 
     /* the index of the current frame of simulation video */
     int video_frame_idx;
