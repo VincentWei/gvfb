@@ -11,16 +11,16 @@
 #ifdef SHOW_FULL_DBG_MSG
 #define msg_out(_level,...)                      \
     do {                                         \
-        printf ("[%s]%d: ", __FILE__, __LINE__); \
-        printf (__VA_ARGS__);                    \
-        printf ("\n");                           \
+        fprintf (stderr, "[%s]%d: ", __FILE__, __LINE__); \
+        fprintf (stderr, __VA_ARGS__);                    \
+        fprintf (stderr, "\n");                           \
     }                                            \
     while (0)
 #else /* SHOW_FULL_DBG_MSG */
 #define msg_out(_level,...)    \
     do {                       \
-        printf (__VA_ARGS__);  \
-        printf ("\n");         \
+        fprintf (stderr, __VA_ARGS__);  \
+        fprintf (stderr, "\n");         \
     }                          \
     while (0)
 #endif /* SHOW_FULL_DBG_MSG */

@@ -290,6 +290,8 @@ gboolean HandleVvlcRequest (void)
         return FALSE;
     }
 
+    Lock ();
+
     switch (header.type) {
     case VRT_SET_GRAPH_ALPHA:
         gvfbruninfo.graph_alpha_channel = (int)header.param1;
@@ -443,6 +445,7 @@ gboolean HandleVvlcRequest (void)
         msg_out (LEVEL_0, "Error when writting UNIX socket.");
     }
 
+    UnLock ();
     return TRUE;
 }
 

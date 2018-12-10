@@ -112,12 +112,14 @@ gboolean FitScnRect (int width, int height, int fit_flag)
                                              gvfbruninfo.drawarea_w,
                                              gvfbruninfo.drawarea_h);
 
+#if 0
                 /* reset pixbuf_s */
                 g_object_unref (gvfbruninfo.pixbuf_s);
                 gvfbruninfo.pixbuf_s =
                     gdk_pixbuf_new (GDK_COLORSPACE_RGB, TRUE, 8,
                                     gvfbruninfo.drawarea_w,
                                     gvfbruninfo.drawarea_h);
+#endif
 
                 MarkDrawAll ();
             }
@@ -247,11 +249,13 @@ void ZoomScale (int zoom)
                                  gvfbruninfo.drawarea_w,
                                  gvfbruninfo.drawarea_h);
 
+#if 0
     /* setup pixbuf of drawarea */
     g_object_unref (gvfbruninfo.pixbuf_s);
     gvfbruninfo.pixbuf_s = gdk_pixbuf_new (GDK_COLORSPACE_RGB, TRUE, 8,
                                            gvfbruninfo.drawarea_w,
                                            gvfbruninfo.drawarea_h);
+#endif
 
     /* set scroll windows */
     sclwnd_w = gvfbruninfo.drawarea_w + 2 * gvfbruninfo.fix_border;
@@ -441,7 +445,6 @@ GtkIMContext *CreateIMContext (GtkWidget * window)
 
     if (im_context == NULL) {
         msg_out (LEVEL_0, "CreateIMContext Error.(gtk_im_multicontext_new)");
-
         return NULL;
     }
 
@@ -706,9 +709,11 @@ GtkWidget *CreateGVFBWindow (gint width, gint height, gint depth,
                                                      8, width, height,
                                                      width * 4, NULL, NULL);
 
+#if 0
     gvfbruninfo.pixbuf_s = gdk_pixbuf_new (GDK_COLORSPACE_RGB, TRUE, 8,
                                            gvfbruninfo.drawarea_w,
                                            gvfbruninfo.drawarea_h);
+#endif
 
     /* im context setup */
     gvfbruninfo.im_context = CreateIMContext (mainwnd);
@@ -929,6 +934,8 @@ void InitMenu (void)
 
 static void cleanup_motion_jpeg (void)
 {
+    gvfbruninfo.video_layer_mode = 0;
+
     if (gvfbruninfo.motion_jpeg_info) {
         free (gvfbruninfo.motion_jpeg_info);
         gvfbruninfo.motion_jpeg_info = NULL;
@@ -938,6 +945,42 @@ static void cleanup_motion_jpeg (void)
         g_object_unref (gvfbruninfo.motion_jpeg_stream);
         gvfbruninfo.motion_jpeg_stream = NULL;
     }
+
+}
+
+static gboolean calc_frame_offset (GVFBRUNINFO* runinfo)
+{
+    guint32 idx_frame = 0;
+    guint32 left_frames = runinfo->motion_jpeg_info->nr_frames;
+
+    g_seekable_seek (G_SEEKABLE(runinfo->motion_jpeg_stream),
+            runinfo->motion_jpeg_info->offset_first_frame,
+            G_SEEK_SET, NULL, NULL);
+
+    while (left_frames > 0) {
+        guint32 frame_size;
+        gssize bytes_read;
+
+        runinfo->motion_jpeg_info->frame_offset[idx_frame] =
+            (guint32)g_seekable_tell (G_SEEKABLE(runinfo->motion_jpeg_stream));
+
+        bytes_read = g_input_stream_read (
+            G_INPUT_STREAM (runinfo->motion_jpeg_stream),
+            &frame_size, sizeof (guint32), NULL, NULL);
+
+        if (bytes_read != sizeof (guint32)) {
+            msg_out (LEVEL_0, "g_input_stream_read");
+            return FALSE;
+        }
+
+        g_seekable_seek (G_SEEKABLE(runinfo->motion_jpeg_stream),
+            frame_size, G_SEEK_CUR, NULL, NULL);
+
+        left_frames--;
+        idx_frame++;
+    }
+
+    return TRUE;
 }
 
 gboolean VvlOpenMotionJPEG (const char* file_name)
@@ -946,6 +989,7 @@ gboolean VvlOpenMotionJPEG (const char* file_name)
 
     GFile* file = g_file_new_for_path (file_name);
     gvfbruninfo.motion_jpeg_stream = g_file_read (file, NULL, NULL);
+    msg_out (LEVEL_0, "gvfbruninfo.motion_jpeg_stream: %p", gvfbruninfo.motion_jpeg_stream);
 
     if (gvfbruninfo.motion_jpeg_stream) {
         gsize my_size;
@@ -955,9 +999,13 @@ gboolean VvlOpenMotionJPEG (const char* file_name)
         gvfbruninfo.motion_jpeg_info = (MotionJPEGInfo*)malloc (my_size);
 
         if (gvfbruninfo.motion_jpeg_stream && gvfbruninfo.motion_jpeg_info) {
+            msg_out (LEVEL_0, "gvfbruninfo.motion_jpeg_info: %p", gvfbruninfo.motion_jpeg_info);
+
             bytes_read = g_input_stream_read (
                 G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
-                &gvfbruninfo.motion_jpeg_info, my_size, NULL, NULL);
+                gvfbruninfo.motion_jpeg_info, my_size, NULL, NULL);
+            msg_out (LEVEL_0, "gvfbruninfo.motion_jpeg_info->nr_frames: %d", gvfbruninfo.motion_jpeg_info->nr_frames);
+            msg_out (LEVEL_0, "byte_read: %ld", bytes_read);
 
             if ((gsize)bytes_read == my_size &&
                     gvfbruninfo.motion_jpeg_info->nr_frames > 0) {
@@ -968,14 +1016,9 @@ gboolean VvlOpenMotionJPEG (const char* file_name)
                 tmp = realloc (gvfbruninfo.motion_jpeg_info, my_size);
                 if (tmp == NULL)
                     goto error;
-
                 gvfbruninfo.motion_jpeg_info = (MotionJPEGInfo*)tmp;
-                bytes_read = g_input_stream_read (
-                        G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
-                        gvfbruninfo.motion_jpeg_info->frame_offset,
-                        my_size, NULL, NULL);
 
-                if ((gsize)bytes_read != my_size)
+                if (!calc_frame_offset (&gvfbruninfo))
                     goto error;
             }
             else {
@@ -992,6 +1035,7 @@ gboolean VvlOpenMotionJPEG (const char* file_name)
     }
 
 error:
+    msg_out (LEVEL_0, "VvlOpenMotionJPEG failed");
     g_object_unref (file);
     cleanup_motion_jpeg ();
     return FALSE;
@@ -999,42 +1043,91 @@ error:
 
 gboolean VvlOpenCamera (const char* path, int zoom_level)
 {
-    return TRUE;
+    if (VvlOpenMotionJPEG (path)) {
+        if (zoom_level > 255)
+            gvfbruninfo.camera_zoom_level = 0x30;
+        else if (zoom_level < 0)
+            gvfbruninfo.camera_zoom_level = 0x30;
+        else
+            gvfbruninfo.camera_zoom_level = zoom_level;
+
+        gvfbruninfo.video_layer_mode = 0x0100;
+
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 gboolean VvlCloseCamera (void)
 {
+    cleanup_motion_jpeg ();
+    gvfbruninfo.video_layer_mode = 0x0000;
     return TRUE;
 }
 
-gboolean VvlSetZoomLevel (int level)
+gboolean VvlSetZoomLevel (int zoom_level)
 {
+    if (zoom_level > 255)
+        gvfbruninfo.camera_zoom_level = 0x30;
+    else if (zoom_level < 0)
+        gvfbruninfo.camera_zoom_level = 0x30;
+    else
+        gvfbruninfo.camera_zoom_level = zoom_level;
+
     return TRUE;
 }
 
 /* Return vido length in seconds */
 unsigned int VvlPlayVideo (const char* path, int idx_frame)
 {
+    if (VvlOpenMotionJPEG (path)) {
+        if (idx_frame >= gvfbruninfo.motion_jpeg_info->nr_frames)
+            gvfbruninfo.video_frame_idx = gvfbruninfo.motion_jpeg_info->nr_frames - 1;
+        else if (idx_frame < 0)
+            gvfbruninfo.video_frame_idx = 0;
+        else
+            gvfbruninfo.video_frame_idx = idx_frame;
+
+        return gvfbruninfo.motion_jpeg_info->nr_frames /
+                    gvfbruninfo.motion_jpeg_info->frame_rate;
+    }
+
     return 0;
 }
 
 gboolean VvlSeekVideo (int idx_frame)
 {
-    return TRUE;
+    if (gvfbruninfo.motion_jpeg_info) {
+        if (idx_frame >= gvfbruninfo.motion_jpeg_info->nr_frames)
+            gvfbruninfo.video_frame_idx = gvfbruninfo.motion_jpeg_info->nr_frames - 1;
+        else if (idx_frame < 0)
+            gvfbruninfo.video_frame_idx = 0;
+        else
+            gvfbruninfo.video_frame_idx = idx_frame;
+
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 gboolean VvlPausPlayback (void)
 {
+    gvfbruninfo.video_layer_mode = 0x0200;
     return TRUE;
 }
 
 gboolean VvlResumePlayback (void)
 {
+    gvfbruninfo.video_layer_mode = 0x0201;
     return TRUE;
 }
 
 gboolean VvlStopPlayback (void)
 {
+    cleanup_motion_jpeg ();
+    gvfbruninfo.video_layer_mode = 0x0000;
     return TRUE;
 }
 
@@ -1056,63 +1149,10 @@ gboolean VvlStopRecord (void)
 void DrawImage (int x, int y, int width, int height)
 {
     if (gvfbruninfo.graph_with_alpha) {
-#if 0
-        /* Gdk implementation */
-
-        GdkPixmap *pixmap;
-        GdkGC *gc;
-
-        cairo_t *cr;
-        const GdkPixbuf *pixbuf;
-
-        int offset_x, offset_y;
-
-        offset_x = x & 0xf;
-        offset_y = y & 0xf;
-
-        pixmap =
-            gdk_pixmap_new (gvfbruninfo.draw_area->window, width + offset_x,
-                            height + offset_y,
-                            gdk_drawable_get_depth (gvfbruninfo.
-                                                    draw_area->window));
-
-        gc = gdk_gc_new (pixmap);
-
-        if (gvfbruninfo.bkgnd_pixmap == NULL) {
-            gvfbruninfo.bkgnd_pixmap =
-                gdk_pixmap_create_from_xpm_d (gvfbruninfo.draw_area->window,
-                                              NULL, NULL, bg_xpm);
-        }
-
-        gdk_gc_set_fill (gc, GDK_TILED);
-        gdk_gc_set_tile (gc, gvfbruninfo.bkgnd_pixmap);
-
-        gdk_draw_rectangle (pixmap, gc, TRUE, 0, 0, width + offset_x,
-                            height + offset_y);
-
-        gdk_draw_drawable (gvfbruninfo.draw_area->window, gc, pixmap,
-                           offset_x, offset_y, x, y, width, height);
-
-        /* draw dirty */
-        if (gvfbruninfo.zoom_percent == 100) {
-            pixbuf = gvfbruninfo.pixbuf_r;
-        }
-        else {
-            pixbuf = gvfbruninfo.pixbuf_s;
-        }
-
-        gdk_draw_pixbuf (pixmap, gc, pixbuf, x, y, offset_x,
-                        offset_y, width, height, GDK_RGB_DITHER_NONE, 0,
-                        0);
-
-        g_object_unref (gc);
-        g_object_unref (pixmap);
-#endif
         /* Cairo implementaion */
 
         cairo_t *cr;
         cairo_pattern_t *pattern;
-        const GdkPixbuf *pixbuf;
 
         cr = gdk_cairo_create (gvfbruninfo.draw_area->window);
 
@@ -1135,25 +1175,27 @@ void DrawImage (int x, int y, int width, int height)
             GdkPixbuf *frame_pixbuf;
 
             g_seekable_seek (G_SEEKABLE(gvfbruninfo.motion_jpeg_stream),
-                    (goffset)gvfbruninfo.motion_jpeg_info->frame_offset[gvfbruninfo.video_frame_idx],
+                    (goffset)(gvfbruninfo.motion_jpeg_info->frame_offset[gvfbruninfo.video_frame_idx] + sizeof (guint32)),
                     G_SEEK_SET, NULL, NULL);
 
             frame_pixbuf = gdk_pixbuf_new_from_stream (G_INPUT_STREAM(gvfbruninfo.motion_jpeg_stream), NULL, NULL);
             if (frame_pixbuf) {
                 if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0100) {
-                    int zoom_level = gvfbruninfo.video_layer_mode & 0x00FF;
+                    int zoom_level = gvfbruninfo.camera_zoom_level;
                     int frame_width = gdk_pixbuf_get_width (frame_pixbuf);
                     int frame_height = gdk_pixbuf_get_height (frame_pixbuf);
 
                     zoom_level = zoom_level / 16 + 1;
 
-                    frame_width = (int)(frame_width * zoom_level / 4.0f);
-                    frame_height = (int)(frame_height * zoom_level / 4.0f);
+                    frame_width = (int)(frame_width * zoom_level * gvfbruninfo.zoom_percent / 400.0f);
+                    frame_height = (int)(frame_height * zoom_level * gvfbruninfo.zoom_percent / 400.0f);
                     cairo_translate (cr,
                             (gvfbruninfo.actual_w - frame_width)/2.0f,
                             (gvfbruninfo.actual_h - frame_height)/2.0f);
 
-                    cairo_scale (cr, zoom_level / 4.0f, zoom_level / 4.0f);
+                    cairo_scale (cr,
+                            zoom_level * gvfbruninfo.zoom_percent / 400.0f,
+                            zoom_level * gvfbruninfo.zoom_percent / 400.0f);
                 }
 
                 gdk_cairo_set_source_pixbuf (cr, frame_pixbuf, 0, 0);
@@ -1166,49 +1208,41 @@ void DrawImage (int x, int y, int width, int height)
 
             if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0100) {
                 gvfbruninfo.video_frame_idx++;
+                if (gvfbruninfo.video_frame_idx > gvfbruninfo.motion_jpeg_info->nr_frames) {
+                    gvfbruninfo.video_frame_idx = 0;
+                }
             }
-            else if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0200
-                    && (gvfbruninfo.video_layer_mode & 0x00FF)) {
+            else if ((gvfbruninfo.video_layer_mode & 0xFFFF) == 0x0201) {
                 gvfbruninfo.video_frame_idx++;
-            }
-
-            if (gvfbruninfo.video_frame_idx > gvfbruninfo.motion_jpeg_info->nr_frames) {
-                gvfbruninfo.video_frame_idx = 0;
+                if (gvfbruninfo.video_frame_idx > gvfbruninfo.motion_jpeg_info->nr_frames) {
+                    gvfbruninfo.video_frame_idx = gvfbruninfo.motion_jpeg_info->nr_frames - 1;
+                    gvfbruninfo.video_layer_mode = 0x0200;
+                }
             }
         }
 
         cairo_identity_matrix (cr);
+        if (gvfbruninfo.zoom_percent != 100)
+            cairo_scale (cr, gvfbruninfo.zoom_percent / 100.0f, gvfbruninfo.zoom_percent / 100.0f);
 
         /* draw graphics */
-        if (gvfbruninfo.zoom_percent == 100)
-            pixbuf = gvfbruninfo.pixbuf_r;
-        else
-            pixbuf = gvfbruninfo.pixbuf_s;
-
-        gdk_cairo_set_source_pixbuf (cr, pixbuf, 0, 0);
+        gdk_cairo_set_source_pixbuf (cr, gvfbruninfo.pixbuf_r, 0, 0);
         cairo_paint_with_alpha (cr, gvfbruninfo.graph_alpha_channel/255.0f);
 
         cairo_destroy (cr);
     }
     else {
-        /* without alpha */
-        /* draw dirty */
-        if (gvfbruninfo.zoom_percent == 100) {
-            gdk_draw_pixbuf (gvfbruninfo.draw_area->window,
-                             gvfbruninfo.draw_area->
-                             style->fg_gc[GTK_WIDGET_STATE
-                                          (gvfbruninfo.draw_area)],
-                             gvfbruninfo.pixbuf_r, x, y, x, y, width, height,
-                             GDK_RGB_DITHER_NONE, 0, 0);
-        }
-        else {
-            gdk_draw_pixbuf (gvfbruninfo.draw_area->window,
-                             gvfbruninfo.draw_area->
-                             style->fg_gc[GTK_WIDGET_STATE
-                                          (gvfbruninfo.draw_area)],
-                             gvfbruninfo.pixbuf_s, x, y, x, y, width, height,
-                             GDK_RGB_DITHER_NONE, 0, 0);
-        }
+        cairo_t *cr;
+
+        cr = gdk_cairo_create (gvfbruninfo.draw_area->window);
+
+        /* draw graphics */
+        if (gvfbruninfo.zoom_percent != 100)
+            cairo_scale (cr, gvfbruninfo.zoom_percent / 100.0f, gvfbruninfo.zoom_percent / 100.0f);
+        gdk_cairo_set_source_pixbuf (cr, gvfbruninfo.pixbuf_r, 0, 0);
+        cairo_paint (cr);
+
+        cairo_destroy (cr);
     }
 }
 

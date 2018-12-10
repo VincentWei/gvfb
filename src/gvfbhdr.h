@@ -108,10 +108,12 @@ typedef struct _GVFBPalEntry {
     unsigned char a;
 } GVFBPalEntry;
 
-typedef struct _MotionJPEGInfo {
-    guint16     nr_frames;
-    guint16     frame_rate;
-    guint32     frame_offset [0];
+typedef struct __attribute__ ((packed)) _MotionJPEGInfo {
+    guint32     nr_frames;          /* number of frames */
+    guint16     frame_rate;         /* frames per second */
+    guint16     reserved;
+    guint32     offset_first_frame; /* offset of the first frame */
+    guint32     frame_offset[0];
 } MotionJPEGInfo;
 
 /* runinfo of gvfb */
@@ -203,7 +205,7 @@ typedef struct _GVFBRUNINFO {
     int camera_zoom_level;
 
     /* the index of the current frame of simulation video */
-    int video_frame_idx;
+    unsigned int video_frame_idx;
 
     int refresh_rate;
 
@@ -242,7 +244,7 @@ typedef struct _GVFBRUNINFO {
 
     unsigned char *pixel_data;
     GdkPixbuf *pixbuf_r;
-    GdkPixbuf *pixbuf_s;
+    //GdkPixbuf *pixbuf_s;
 
 #ifdef WIN32
     int lockid;

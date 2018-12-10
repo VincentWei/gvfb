@@ -120,7 +120,7 @@ void InitRunInfo ()
     gvfbruninfo.hdr = (void *) -1;
 
     gvfbruninfo.pixbuf_r = NULL;
-    gvfbruninfo.pixbuf_s = NULL;
+    //gvfbruninfo.pixbuf_s = NULL;
 
     /* init gvfbruninfo */
     gvfbruninfo.has_menu = TRUE;
@@ -170,9 +170,11 @@ void InitRunInfo ()
 
 void UnInitRunInfo ()
 {
+#if 0
     if (gvfbruninfo.pixbuf_s != NULL) {
         g_object_unref (gvfbruninfo.pixbuf_s);
     }
+#endif
 }
 
 int FixDepth (int depth)
@@ -461,10 +463,11 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
     gvfbruninfo.video_layer_mode = 0x0000;
     gvfbruninfo.graph_alpha_channel = 127;
 #else
-    gvfbruninfo.video_layer_mode = 0x0130;
-    gvfbruninfo.graph_alpha_channel = 127;
+    VvlOpenMotionJPEG ("/tmp/test.mjpeg");
 
-    VvlOpenMotionJPEG ("/srv/devel/res/video-frames/test.mjpg");
+    gvfbruninfo.video_layer_mode = 0x0100;
+    gvfbruninfo.graph_alpha_channel = 127;
+    gvfbruninfo.camera_zoom_level = 0x30;
 
     gvfbruninfo.vvls_sockfd = -1;
     gvfbruninfo.vvlc_sockfd = -1;
@@ -488,6 +491,8 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
                     close (gvfbruninfo.vvls_sockfd);
                     gvfbruninfo.vvls_sockfd = -1;
                 }
+
+                msg_out (LEVEL_0, "VVLS Listen at %d.", gvfbruninfo.vvls_sockfd);
             }
             else {
                 msg_out (LEVEL_0, "Failed to bind to VVLS socket.");
@@ -737,6 +742,7 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
 
 void ScaleImage (int x, int y, int width, int height)
 {
+#if 0
     if (gvfbruninfo.fastmode == TRUE) {
         gdk_pixbuf_scale (gvfbruninfo.pixbuf_r, gvfbruninfo.pixbuf_s, x, y,
                           width, height, 0.0, 0.0,
@@ -749,6 +755,7 @@ void ScaleImage (int x, int y, int width, int height)
                           (double) gvfbruninfo.zoom_percent / 100,
                           (double) gvfbruninfo.zoom_percent / 100, GDK_INTERP_TILES);
     }
+#endif
 }
 
 void *CheckEventThread (void *args)
@@ -1540,18 +1547,12 @@ static void draw_dirty_rect (void)
     GVFBRECT dirty;
     GVFBRECT draw_rect;
     gint fix_l, fix_t, fix_r, fix_b;
-
     GVFBHeader *hdr;
 
     /* get gvfb header */
     hdr = gvfbruninfo.hdr;
 
     Lock ();
-#ifdef DEBUG
-//    printf ("draw dirty rect : %d %d %d %d\n",
-//            hdr->dirty_rc_l, hdr->dirty_rc_t,
-//            hdr->dirty_rc_r, hdr->dirty_rc_b);
-#endif
 
     fix_l = max (hdr->dirty_rc_l, 0);
     fix_t = max (hdr->dirty_rc_t, 0);
@@ -1561,8 +1562,6 @@ static void draw_dirty_rect (void)
     set_dirty (0, 0, 0, 0, 0);
 
     get_pixbuf_data (fix_l, fix_t, (fix_r - fix_l), (fix_b - fix_t));
-
-    UnLock ();
 
     if (gvfbruninfo.zoom_percent != 100) {
         fix_l = fix_l * gvfbruninfo.zoom_percent / 100;
@@ -1579,7 +1578,7 @@ static void draw_dirty_rect (void)
     /* draw rect */
     /* fix dirty rect */
     if (!GetDrawRect (&draw_rect)) {
-        return;
+        goto ret;
     }
 
     if (gvfbruninfo.graph_with_alpha && gvfbruninfo.video_layer_mode) {
@@ -1596,7 +1595,7 @@ static void draw_dirty_rect (void)
 
         /* check dirty rect */
         if ((dirty.x < 0) || (dirty.y < 0) || (dirty.w <= 0) || (dirty.h <= 0)) {
-            return;
+            goto ret;
         }
     }
 
@@ -1605,4 +1604,8 @@ static void draw_dirty_rect (void)
     }
 
     DrawImage (dirty.x, dirty.y, dirty.w, dirty.h);
+
+ret:
+    UnLock ();
 }
+
