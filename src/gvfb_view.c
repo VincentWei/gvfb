@@ -927,6 +927,132 @@ void InitMenu (void)
                        gvfbruninfo.main_w, gvfbruninfo.main_h);
 }
 
+static void cleanup_motion_jpeg (void)
+{
+    if (gvfbruninfo.motion_jpeg_info) {
+        free (gvfbruninfo.motion_jpeg_info);
+        gvfbruninfo.motion_jpeg_info = NULL;
+    }
+
+    if (gvfbruninfo.motion_jpeg_stream) {
+        g_object_unref (gvfbruninfo.motion_jpeg_stream);
+        gvfbruninfo.motion_jpeg_stream = NULL;
+    }
+}
+
+gboolean VvlOpenMotionJPEG (const char* file_name)
+{
+    cleanup_motion_jpeg ();
+
+    GFile* file = g_file_new_for_path (file_name);
+    gvfbruninfo.motion_jpeg_stream = g_file_read (file, NULL, NULL);
+
+    if (gvfbruninfo.motion_jpeg_stream) {
+        gsize my_size;
+        gssize bytes_read;
+
+        my_size = sizeof (MotionJPEGInfo);
+        gvfbruninfo.motion_jpeg_info = (MotionJPEGInfo*)malloc (my_size);
+
+        if (gvfbruninfo.motion_jpeg_stream && gvfbruninfo.motion_jpeg_info) {
+            bytes_read = g_input_stream_read (
+                G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
+                &gvfbruninfo.motion_jpeg_info, my_size, NULL, NULL);
+
+            if ((gsize)bytes_read == my_size &&
+                    gvfbruninfo.motion_jpeg_info->nr_frames > 0) {
+                void* tmp;
+
+                my_size = sizeof (MotionJPEGInfo) +
+                    sizeof (guint32) * gvfbruninfo.motion_jpeg_info->nr_frames;
+                tmp = realloc (gvfbruninfo.motion_jpeg_info, my_size);
+                if (tmp == NULL)
+                    goto error;
+
+                gvfbruninfo.motion_jpeg_info = (MotionJPEGInfo*)tmp;
+                bytes_read = g_input_stream_read (
+                        G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
+                        gvfbruninfo.motion_jpeg_info->frame_offset,
+                        my_size, NULL, NULL);
+
+                if ((gsize)bytes_read != my_size)
+                    goto error;
+            }
+            else {
+                goto error;
+            }
+        }
+        else {
+            goto error;
+        }
+
+        g_object_unref (file);
+        gvfbruninfo.video_frame_idx = 0;
+        return TRUE;
+    }
+
+error:
+    g_object_unref (file);
+    cleanup_motion_jpeg ();
+    return FALSE;
+}
+
+gboolean VvlOpenCamera (const char* path, int zoom_level)
+{
+    return TRUE;
+}
+
+gboolean VvlCloseCamera (void)
+{
+    return TRUE;
+}
+
+gboolean VvlSetZoomLevel (int level)
+{
+    return TRUE;
+}
+
+/* Return vido length in seconds */
+unsigned int VvlPlayVideo (const char* path, int idx_frame)
+{
+    return 0;
+}
+
+gboolean VvlSeekVideo (int idx_frame)
+{
+    return TRUE;
+}
+
+gboolean VvlPausPlayback (void)
+{
+    return TRUE;
+}
+
+gboolean VvlResumePlayback (void)
+{
+    return TRUE;
+}
+
+gboolean VvlStopPlayback (void)
+{
+    return TRUE;
+}
+
+gboolean VvlCapturePhoto (const char* path)
+{
+    return TRUE;
+}
+
+gboolean VvlStartRecord (const char* path)
+{
+    return TRUE;
+}
+
+gboolean VvlStopRecord (void)
+{
+    return TRUE;
+}
+
 void DrawImage (int x, int y, int width, int height)
 {
     if (gvfbruninfo.graph_with_alpha) {

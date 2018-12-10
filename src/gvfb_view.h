@@ -156,5 +156,24 @@ gboolean FitScnRect (int width, int height, int fit_flag);
  */
 void SetMouseXY (int x, int y);
 
+gboolean VvlOpenMotionJPEG (const char* path);
+
+gboolean VvlOpenCamera (const char* path, int zoom_level);
+gboolean VvlCloseCamera (void);
+gboolean VvlSetZoomLevel (int level);
+
+/* Return vido length in seconds */
+unsigned int VvlPlayVideo (const char* path, int idx_frame);
+gboolean VvlSeekVideo (int idx_frame);
+
+gboolean VvlPausPlayback (void);
+gboolean VvlResumePlayback (void);
+gboolean VvlStopPlayback (void);
+
+gboolean VvlCapturePhoto (const char* path);
+
+gboolean VvlStartRecord (const char* path);
+gboolean VvlStopRecord (void);
+
 #endif /* end of _GVFB_VIEW_H_ */
 

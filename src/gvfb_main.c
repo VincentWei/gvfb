@@ -217,73 +217,6 @@ int GetColorFormatIndex (int depth, const char *color_format)
     return index;
 }
 
-static gboolean init_motion_jpeg (const char* file_name)
-{
-    gvfbruninfo.motion_jpeg_stream = NULL;
-    gvfbruninfo.motion_jpeg_info = NULL;
-
-    GFile* file = g_file_new_for_path (file_name);
-    gvfbruninfo.motion_jpeg_stream = g_file_read (file, NULL, NULL);
-
-    if (gvfbruninfo.motion_jpeg_stream) {
-        gsize my_size;
-        gssize bytes_read;
-
-        my_size = sizeof (MotionJPEGInfo);
-        gvfbruninfo.motion_jpeg_info = (MotionJPEGInfo*)malloc (my_size);
-
-        if (gvfbruninfo.motion_jpeg_stream && gvfbruninfo.motion_jpeg_info) {
-            bytes_read = g_input_stream_read (
-                G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
-                &gvfbruninfo.motion_jpeg_info, my_size, NULL, NULL);
-
-            if ((gsize)bytes_read == my_size &&
-                    gvfbruninfo.motion_jpeg_info->nr_frames > 0) {
-                void* tmp;
-
-                my_size = sizeof (MotionJPEGInfo) +
-                    sizeof (guint32) * gvfbruninfo.motion_jpeg_info->nr_frames;
-                tmp = realloc (gvfbruninfo.motion_jpeg_info, my_size);
-                if (tmp == NULL)
-                    goto error;
-
-                gvfbruninfo.motion_jpeg_info = (MotionJPEGInfo*)tmp;
-                bytes_read = g_input_stream_read (
-                        G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
-                        gvfbruninfo.motion_jpeg_info->frame_offset,
-                        my_size, NULL, NULL);
-
-                if ((gsize)bytes_read != my_size)
-                    goto error;
-            }
-            else {
-                goto error;
-            }
-        }
-        else {
-            goto error;
-        }
-
-        g_object_unref (file);
-        gvfbruninfo.video_frame_idx = 0;
-        return TRUE;
-    }
-
-error:
-    g_object_unref (file);
-    if (gvfbruninfo.motion_jpeg_info) {
-        free (gvfbruninfo.motion_jpeg_info);
-        gvfbruninfo.motion_jpeg_info = NULL;
-    }
-
-    if (gvfbruninfo.motion_jpeg_stream) {
-        g_object_unref (gvfbruninfo.motion_jpeg_stream);
-        gvfbruninfo.motion_jpeg_stream = NULL;
-    }
-
-    return FALSE;
-}
-
 /* Init */
 int Init (int ppid, int width, int height, int depth, const char *color_format)
 {
@@ -466,7 +399,7 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
 
         return -1;
     }
-#endif
+#endif /* !WIN32 */
 
     /* set capslock state */
     set_capslock ();
@@ -530,7 +463,8 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
 #else
     gvfbruninfo.video_layer_mode = 0x0130;
     gvfbruninfo.graph_alpha_channel = 127;
-    init_motion_jpeg ("/srv/devel/res/video-frames/test.mjpg");
+
+    VvlOpenMotionJPEG ("/srv/devel/res/video-frames/test.mjpg");
 
     gvfbruninfo.vvls_sockfd = -1;
     gvfbruninfo.vvlc_sockfd = -1;
@@ -545,7 +479,10 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
 
             if (bind (gvfbruninfo.vvls_sockfd,
                     (struct sockaddr *)&server_address,
-                    sizeof (server_address) >= 0)) {
+                    sizeof (server_address)) >= 0) {
+
+                chmod (SOCKET_VVLS, 0666);
+
                 if (listen (gvfbruninfo.vvls_sockfd, 1) < 0) {
                     msg_out (LEVEL_0, "Failed to listen to VVLS socket.");
                     close (gvfbruninfo.vvls_sockfd);
@@ -562,7 +499,7 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
             msg_out (LEVEL_0, "Failed to create VVLS socket.");
         }
     }
-#endif
+#endif /* !WIN32 */
 
     return 0;
 }
@@ -845,7 +782,6 @@ void *CheckEventThread (void *args)
 
     /* show the message */
     gdk_threads_enter ();
-
     if (has_err) {
         /* show error message */
         msg_dialog = gtk_message_dialog_new (GTK_WINDOW (gvfbruninfo.window),
@@ -854,10 +790,8 @@ void *CheckEventThread (void *args)
                                              err_msg, NULL);
 
         gtk_dialog_run (GTK_DIALOG (msg_dialog));
-
         gtk_widget_destroy (msg_dialog);
     }
-
     gdk_threads_leave ();
 
     /* create draw dirty thread */
@@ -868,22 +802,37 @@ void *CheckEventThread (void *args)
 
     /* running */
     while (runinfo->running) {
+        int maxfd = runinfo->sockfd;
+
         FD_ZERO (&fds);
         FD_SET (runinfo->sockfd, &fds);
+
+#ifndef WIN32
+        if (runinfo->vvls_sockfd >= 0) {
+            FD_SET (runinfo->vvls_sockfd, &fds);
+            if (runinfo->vvls_sockfd > maxfd)
+                maxfd = runinfo->vvls_sockfd;
+        }
+
+        if (runinfo->vvlc_sockfd >= 0) {
+            FD_SET (runinfo->vvlc_sockfd, &fds);
+            if (runinfo->vvlc_sockfd > maxfd)
+                maxfd = runinfo->vvlc_sockfd;
+        }
+#endif /* !WIN32 */
 
         /* 1s */
         tv.tv_sec = 0;
         tv.tv_usec = 100 * 1000;
 
-        ret = select (runinfo->sockfd + 1, &fds, NULL, NULL, &tv);
+        ret = select (maxfd + 1, &fds, NULL, NULL, &tv);
 
         if (ret < 0) {
-#ifdef WIN32
-#else
+#ifndef WIN32
             if (errno == EINTR) {
                 continue;
             }
-#endif
+#endif /* !WIN32 */
 
             msg_out (LEVEL_0, "select.");
 
@@ -894,6 +843,36 @@ void *CheckEventThread (void *args)
         else if (ret == 0) {
             continue;
         }
+
+#ifndef WIN32
+        if (runinfo->vvls_sockfd >= 0 &&
+                FD_ISSET (runinfo->vvls_sockfd, &fds)) {
+            struct sockaddr_un client_address;
+            socklen_t client_len;
+            int fd;
+
+            fd = accept (runinfo->vvls_sockfd,
+                (struct sockaddr *)&client_address, &client_len);
+            if (fd < 0) {
+                msg_out (LEVEL_0, "Failed to accept connection request");
+            }
+            else {
+                if (runinfo->vvlc_sockfd < 0) {
+                    runinfo->vvlc_sockfd = fd;
+                }
+                else {
+                    close (fd);
+                }
+            }
+        }
+        else if (runinfo->vvlc_sockfd >= 0 &&
+                FD_ISSET (runinfo->vvlc_sockfd, &fds)) {
+            HandleVvlcRequest ();
+        }
+        else if (!FD_ISSET (runinfo->sockfd, &fds)) {
+            continue;
+        }
+#endif /* !WIN32 */
 
         ret =
             Recv (runinfo->sockfd, (unsigned char *) &type, sizeof (type),
@@ -947,23 +926,18 @@ void *CheckEventThread (void *args)
 
             if (temp <= 0) {
                 msg_out (LEVEL_0, "recv caption error.");
-
                 err_flag = 1;
-
                 runinfo->running = FALSE;
-
                 break;
             }
 
             buffer[temp] = '\0';
 
             gdk_threads_enter ();
-
             gtk_window_set_title (GTK_WINDOW (runinfo->window), buffer);
-
             gdk_threads_leave ();
-
             break;
+
         case SHOW_HIDE_TYPE:
             temp = 0;
 
@@ -983,12 +957,10 @@ void *CheckEventThread (void *args)
             }
 
             gdk_threads_enter ();
-
             ShowHide (temp);
-
             gdk_threads_leave ();
-
             break;
+
         case MOUSE_TYPE:
             ret =
                 Recv (runinfo->sockfd, (unsigned char *) &x, sizeof (int),
@@ -1002,7 +974,6 @@ void *CheckEventThread (void *args)
                 }
 
                 runinfo->running = FALSE;
-
                 break;
             }
 
@@ -1018,7 +989,6 @@ void *CheckEventThread (void *args)
                 }
 
                 runinfo->running = FALSE;
-
                 break;
             }
 
@@ -1034,13 +1004,12 @@ void *CheckEventThread (void *args)
             SetMouseXY (x, y);
 
             gdk_threads_leave ();
-
             break;
+
         case IME_TYPE:
 #ifdef DEBUG
             printf ("IME_TYPE\n");
 #endif
-
             ret =
                 Recv (runinfo->sockfd, (unsigned char *) &temp, sizeof (int),
                       MSG_TRUNC);
@@ -1053,16 +1022,16 @@ void *CheckEventThread (void *args)
                 }
 
                 runinfo->running = FALSE;
-
                 break;
             }
 
             break;
+
         default:
             /* do nothing */
             break;
-        }       /* end switch */
-    }   /* end while */
+        } /* end switch */
+    } /* end while */
 
     g_thread_join (drawthread);
 

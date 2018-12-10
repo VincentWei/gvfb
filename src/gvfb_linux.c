@@ -23,11 +23,41 @@
 
 #include "gvfbhdr.h"
 #include "gvfb_main.h"
+#include "gvfb_view.h"
 #include "gvfb_linux.h"
 #include "gvfb_log.h"
 
 /* static function */
-static void signal_handler (int v);
+static void signal_handler (int v)
+{
+#ifdef DEBUG
+    switch (v) {
+    case SIGHUP:
+        printf ("SIGHUP\n");
+        break;
+    case SIGPIPE:
+        printf ("SIGPIPE\n");
+        break;
+    case SIGTERM:
+        printf ("SIGTERM\n");
+        break;
+    case SIGINT:
+        printf ("SIGINT\n");
+        break;
+    default:
+        printf ("unknown\n");
+        break;
+    }
+#endif
+
+    if (v == SIGSEGV) {
+        msg_out (LEVEL_0, "SIGSEGV.");
+    }
+
+    msg_out (LEVEL_0, "signal.(%d)", v);
+
+    gvfbruninfo.running = FALSE;
+}
 
 /* locale value */
 static int lockid = -1;
@@ -244,33 +274,175 @@ int ConnectToMiniGUI (int ppid)
     return sockfd;
 }
 
-static void signal_handler (int v)
+gboolean HandleVvlcRequest (void)
 {
-#ifdef DEBUG
-    switch (v) {
-    case SIGHUP:
-        printf ("SIGHUP\n");
+    ssize_t n = 0;
+    struct _vvlc_data_header header;
+    int status = VRS_OK;
+    char path [PATH_MAX];
+
+    n = read (gvfbruninfo.vvlc_sockfd, &header, sizeof (header));
+    if (n == 0) {
+        return FALSE;
+    }
+
+    if (n < sizeof (header)) {
+        return FALSE;
+    }
+
+    switch (header.type) {
+    case VRT_SET_GRAPH_ALPHA:
+        gvfbruninfo.graph_alpha_channel = (int)header.param1;
         break;
-    case SIGPIPE:
-        printf ("SIGPIPE\n");
+
+    case VRT_OPEN_CAMERA:
+        if (gvfbruninfo.video_layer_mode) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (header.payload_len <= 0) {
+            status = VRS_INV_REQUEST;
+        }
+        else {
+            n = read (gvfbruninfo.vvlc_sockfd, path, header.payload_len);
+            if (n < header.payload_len) {
+                status = VRS_INV_REQUEST;
+            }
+            else if (!VvlOpenCamera (path, header.param1)) {
+                status = VRS_OPERATION_FAILED;
+            }
+        }
         break;
-    case SIGTERM:
-        printf ("SIGTERM\n");
+
+    case VRT_CLOSE_CAMERA:
+        if ((gvfbruninfo.video_layer_mode) & 0xFF00 != 0x0100) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (!VvlCloseCamera ()) {
+            status = VRS_OPERATION_FAILED;
+        }
         break;
-    case SIGINT:
-        printf ("SIGINT\n");
+
+    case VRT_SET_ZOOM_LEVEL:
+        if ((gvfbruninfo.video_layer_mode) & 0xFF00 != 0x0100) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (!VvlSetZoomLevel (header.param1)) {
+            status = VRS_OPERATION_FAILED;
+        }
         break;
+
+    case VRT_PLAY_VIDEO:
+        if (gvfbruninfo.video_layer_mode) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (header.payload_len <= 0) {
+            status = VRS_INV_REQUEST;
+        }
+        else {
+            n = read (gvfbruninfo.vvlc_sockfd, path, header.payload_len);
+            if (n < header.payload_len) {
+                status = VRS_INV_REQUEST;
+            }
+            else if (VvlPlayVideo (path, header.param1) == 0) {
+                status = VRS_OPERATION_FAILED;
+            }
+        }
+        break;
+
+    case VRT_SEEK_VIDEO:
+        if ((gvfbruninfo.video_layer_mode) & 0xFF00 != 0x0200) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (!VvlSeekVideo (header.param1)) {
+            status = VRS_OPERATION_FAILED;
+        }
+        break;
+
+    case VRT_PAUSE_PLAYBACK:
+        if ((gvfbruninfo.video_layer_mode) & 0xFFFF != 0x0201) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (!VvlPausPlayback ()) {
+            status = VRS_OPERATION_FAILED;
+        }
+        break;
+
+    case VRT_RESUME_PLAYBACK:
+        if ((gvfbruninfo.video_layer_mode) & 0xFFFF != 0x0200) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (!VvlResumePlayback ()) {
+            status = VRS_OPERATION_FAILED;
+        }
+        break;
+
+    case VRT_STOP_PLAYBACK:
+        if ((gvfbruninfo.video_layer_mode) & 0xFF00 != 0x0200) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (!VvlStopPlayback ()) {
+            status = VRS_OPERATION_FAILED;
+        }
+        break;
+
+    case VRT_CAPTURE_PHOTO:
+        if ((gvfbruninfo.video_layer_mode) & 0xFFFF != 0x0100) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (header.payload_len <= 0) {
+            status = VRS_INV_REQUEST;
+        }
+        else {
+            n = read (gvfbruninfo.vvlc_sockfd, path, header.payload_len);
+            if (n < header.payload_len) {
+                status = VRS_INV_REQUEST;
+            }
+            else if (!VvlCapturePhoto (path)) {
+                status = VRS_OPERATION_FAILED;
+            }
+        }
+        break;
+
+    case VRT_START_RECORD:
+        if ((gvfbruninfo.video_layer_mode) & 0xFFFF != 0x0100) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (header.payload_len <= 0) {
+            status = VRS_INV_REQUEST;
+        }
+        else {
+            n = read (gvfbruninfo.vvlc_sockfd, path, header.payload_len);
+            if (n < header.payload_len) {
+                status = VRS_INV_REQUEST;
+            }
+            else if (!VvlStartRecord (path)) {
+                status = VRS_OPERATION_FAILED;
+            }
+        }
+        break;
+
+    case VRT_STOP_RECORD:
+        if ((gvfbruninfo.video_layer_mode) & 0xFFFF != 0x0101) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (!VvlStopRecord ()) {
+            status = VRS_OPERATION_FAILED;
+        }
+        break;
+
     default:
-        printf ("unknown\n");
+        status = VRS_INV_REQUEST;
         break;
     }
-#endif
 
-    if (v == SIGSEGV) {
-        msg_out (LEVEL_0, "SIGSEGV.");
+    header.type = VRT_RESPONSE;
+    header.param1 = status;
+    header.payload_len = 0;
+    n = write (gvfbruninfo.vvlc_sockfd, &header, sizeof (header));
+    if (n != sizeof (header)) {
+        msg_out (LEVEL_0, "Error when writting UNIX socket.");
     }
 
-    msg_out (LEVEL_0, "signal.(%d)", v);
-
-    gvfbruninfo.running = FALSE;
+    return TRUE;
 }
+

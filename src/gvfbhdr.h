@@ -181,10 +181,12 @@ typedef struct _GVFBRUNINFO {
     /*
      * video layer mode:
      * 0x0000 for off (grid background)
-     * 0x01xx for camera, the lower byte is the zoom level
+     * 0x01xx for camera,
+     *      the lower byte is the current status,
+     *      1 for recording and 0 for idle.
      * 0x02xx for video playback;
-     *       the lower byte is the current status,
-     *       1 for playing and 0 for stopped.
+     *      the lower byte is the current status,
+     *      1 for playing and 0 for paused.
      */
     unsigned int video_layer_mode;
 
@@ -196,6 +198,9 @@ typedef struct _GVFBRUNINFO {
 
     /* the motion jpeg information */
     MotionJPEGInfo *motion_jpeg_info;
+
+    /* the current zoom level of camera */
+    int camera_zoom_level;
 
     /* the index of the current frame of simulation video */
     int video_frame_idx;
