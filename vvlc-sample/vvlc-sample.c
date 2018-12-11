@@ -150,10 +150,15 @@ static int handle_response (int fd)
     struct _vvlc_data_header response;
 
     n = read (fd, &response, sizeof (struct _vvlc_data_header));
+    if (n == 0) {
+        return 0;
+    }
+
     if (n < sizeof (struct _vvlc_data_header)) {
         printf ("Error when reading UNIX socket (%lu to read, %ld got).\n",
                 sizeof (struct _vvlc_data_header), n);
         exit_on_error(fd);
+        return 0;
     }
 
     if (response.type != VRT_RESPONSE
@@ -174,6 +179,9 @@ static void write_request (int fd, const struct _vvlc_data_header* request,
         int request_len)
 {
     ssize_t n;
+
+    printf ("request type (%d), request len: %d, payload length (%lu), payload (%s).\n",
+        request->type, request_len, request->payload_len, request->payload);
 
     n = write (fd, request, request_len);
     if (n != request_len) {
@@ -453,12 +461,12 @@ int main (int argc, const char* argv[])
             break;
 
         case 10:
-            zoom_level += 0x30;
+            zoom_level += 0x10;
             zoom_camera (fd, zoom_level);
             break;
 
         case 11:
-            zoom_level -= 0x30;
+            zoom_level -= 0x10;
             zoom_camera (fd, zoom_level);
             break;
         }

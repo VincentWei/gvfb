@@ -983,7 +983,7 @@ static gboolean calc_frame_offset (GVFBRUNINFO* runinfo)
             &frame_size, sizeof (guint32), NULL, NULL);
 
         if (bytes_read != sizeof (guint32)) {
-            msg_out (LEVEL_0, "g_input_stream_read");
+            msg_out (LEVEL_0, "calc_frame_offset: g_input_stream_read failed");
             return FALSE;
         }
 
@@ -1024,12 +1024,16 @@ gboolean VvlOpenMotionJPEG (const char* file_name)
                 my_size = sizeof (MotionJPEGInfo) +
                     sizeof (guint32) * gvfbruninfo.motion_jpeg_info->nr_frames;
                 tmp = realloc (gvfbruninfo.motion_jpeg_info, my_size);
-                if (tmp == NULL)
+                if (tmp == NULL) {
+                    msg_out (LEVEL_0, "VvlOpenMotionJPEG: realloc failed: %d",
+                            gvfbruninfo.motion_jpeg_info->nr_frames);
                     goto error;
+                }
                 gvfbruninfo.motion_jpeg_info = (MotionJPEGInfo*)tmp;
 
-                if (!calc_frame_offset (&gvfbruninfo))
+                if (!calc_frame_offset (&gvfbruninfo)) {
                     goto error;
+                }
             }
             else {
                 goto error;
@@ -1145,7 +1149,7 @@ gboolean VvlStopPlayback (void)
 
 #define LEN_RW_BUFF  8192
 
-static gboolean record_current_frame (GFileOutputStream* output_stream)
+static gboolean record_current_frame (GFileOutputStream* output_stream, gboolean save_size)
 {
     guint32 left_size;
     gssize bytes_read, bytes_wrotten;
@@ -1162,6 +1166,15 @@ static gboolean record_current_frame (GFileOutputStream* output_stream)
     if (bytes_read != sizeof (guint32)) {
         msg_out (LEVEL_0, "g_input_stream_read");
         return FALSE;
+    }
+
+    if (save_size) {
+        bytes_wrotten = g_output_stream_write (
+                G_OUTPUT_STREAM (output_stream),
+                &left_size, sizeof (guint32), NULL, NULL);
+
+        if (bytes_wrotten < sizeof (guint32)) // disk full
+            return FALSE;
     }
 
     while (left_size > 0) {
@@ -1206,7 +1219,7 @@ gboolean VvlCapturePhoto (const char* path)
         goto error;
     }
 
-    record_current_frame (photo_stream);
+    record_current_frame (photo_stream, FALSE);
 
     g_output_stream_close (
             G_OUTPUT_STREAM (photo_stream), NULL, NULL);
@@ -1352,7 +1365,8 @@ void DrawImage (int x, int y, int width, int height)
 
             if (gvfbruninfo.video_layer_mode == 0x0101
                     && gvfbruninfo.video_record_stream) {
-                if (record_current_frame (gvfbruninfo.video_record_stream)) {
+                if (record_current_frame (gvfbruninfo.video_record_stream,
+                            TRUE)) {
                     update_record_header ();
                 }
                 else {

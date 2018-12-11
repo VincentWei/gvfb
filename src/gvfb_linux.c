@@ -288,7 +288,7 @@ gboolean CheckAsyncOperation (int vvlc_sockfd)
             header.param1 = VRT_START_RECORD;
             header.param2 = VRS_OPERATION_FAILED;
             header.payload_len = 0;
-            n = write (gvfbruninfo.vvlc_sockfd, &header, sizeof (header));
+            n = write (vvlc_sockfd, &header, sizeof (header));
             if (n != sizeof (header)) {
                 msg_out (LEVEL_0, "Error when writting UNIX socket.");
                 return FALSE;
@@ -304,7 +304,7 @@ gboolean CheckAsyncOperation (int vvlc_sockfd)
             header.param1 = VRT_PLAY_VIDEO;
             header.param2 = VRS_OPERATION_FINISHED;
             header.payload_len = 0;
-            n = write (gvfbruninfo.vvlc_sockfd, &header, sizeof (header));
+            n = write (vvlc_sockfd, &header, sizeof (header));
             if (n != sizeof (header)) {
                 msg_out (LEVEL_0, "Error when writting UNIX socket.");
                 return FALSE;
@@ -323,13 +323,24 @@ gboolean HandleVvlcRequest (int fd)
     char path [PATH_MAX];
 
     n = read (fd, &header, sizeof (header));
+    if (n == 0)
+        return TRUE;
+
     if (n < sizeof (header)) {
         msg_out (LEVEL_0, "Failed to read from vvlc socket");
         return FALSE;
     }
 
-    msg_out (LEVEL_0, "got a request (%d) with param1 (%d), param2 (%d)",
-            header.type, header.param1, header.param2);
+    msg_out (LEVEL_0, "got a request (%d) with param1 (%d), param2 (%d), payload_len (%lu)",
+            header.type, header.param1, header.param2, header.payload_len);
+
+    if (header.payload_len > 0) {
+        n = read (fd, path, header.payload_len);
+        if (n < header.payload_len) {
+            status = VRS_INV_REQUEST;
+            goto error;
+        }
+    }
 
     Lock ();
 
@@ -345,14 +356,8 @@ gboolean HandleVvlcRequest (int fd)
         else if (header.payload_len <= 0) {
             status = VRS_INV_REQUEST;
         }
-        else {
-            n = read (fd, path, header.payload_len);
-            if (n < header.payload_len) {
-                status = VRS_INV_REQUEST;
-            }
-            else if (!VvlOpenCamera (path, header.param1)) {
-                status = VRS_OPERATION_FAILED;
-            }
+        else if (!VvlOpenCamera (path, header.param1)) {
+            status = VRS_OPERATION_FAILED;
         }
         break;
 
@@ -382,13 +387,7 @@ gboolean HandleVvlcRequest (int fd)
             status = VRS_INV_REQUEST;
         }
         else {
-            n = read (fd, path, header.payload_len);
-            if (n < header.payload_len) {
-                status = VRS_INV_REQUEST;
-            }
-            else {
-                status = VvlPlayVideo (path, header.param1);
-            }
+            status = VvlPlayVideo (path, header.param1);
         }
         break;
 
@@ -420,7 +419,7 @@ gboolean HandleVvlcRequest (int fd)
         break;
 
     case VRT_STOP_PLAYBACK:
-        if ((gvfbruninfo.video_layer_mode) & 0xFF00 != 0x0200) {
+        if ((gvfbruninfo.video_layer_mode & 0xFF00) != 0x0200) {
             status = VRS_BAD_OPERATION;
         }
         else if (!VvlStopPlayback ()) {
@@ -429,20 +428,14 @@ gboolean HandleVvlcRequest (int fd)
         break;
 
     case VRT_CAPTURE_PHOTO:
-        if ((gvfbruninfo.video_layer_mode) & 0xFFFF != 0x0100) {
+        if ((gvfbruninfo.video_layer_mode & 0xFFFF) != 0x0100) {
             status = VRS_BAD_OPERATION;
         }
         else if (header.payload_len <= 0) {
             status = VRS_INV_REQUEST;
         }
-        else {
-            n = read (fd, path, header.payload_len);
-            if (n < header.payload_len) {
-                status = VRS_INV_REQUEST;
-            }
-            else if (!VvlCapturePhoto (path)) {
-                status = VRS_OPERATION_FAILED;
-            }
+        else if (!VvlCapturePhoto (path)) {
+            status = VRS_OPERATION_FAILED;
         }
         break;
 
@@ -453,14 +446,8 @@ gboolean HandleVvlcRequest (int fd)
         else if (header.payload_len <= 0) {
             status = VRS_INV_REQUEST;
         }
-        else {
-            n = read (fd, path, header.payload_len);
-            if (n < header.payload_len) {
-                status = VRS_INV_REQUEST;
-            }
-            else if (!VvlStartRecord (path)) {
-                status = VRS_OPERATION_FAILED;
-            }
+        else if (!VvlStartRecord (path)) {
+            status = VRS_OPERATION_FAILED;
         }
         break;
 
@@ -478,6 +465,10 @@ gboolean HandleVvlcRequest (int fd)
         break;
     }
 
+    UnLock ();
+
+error:
+
     /* send response to client */
     header.param1 = header.type;
     header.param2 = status;
@@ -490,7 +481,6 @@ gboolean HandleVvlcRequest (int fd)
         return FALSE;
     }
 
-    UnLock ();
     return TRUE;
 }
 

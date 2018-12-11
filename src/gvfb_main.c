@@ -886,6 +886,7 @@ void *CheckEventThread (void *args)
                 close (runinfo->vvlc_sockfd);
                 runinfo->vvlc_sockfd = -1;
             }
+
             continue;
         }
         else if (!FD_ISSET (runinfo->sockfd, &fds)) {
