@@ -166,7 +166,7 @@ gboolean VvlSetZoomLevel (int level);
 unsigned int VvlPlayVideo (const char* path, int idx_frame);
 gboolean VvlSeekVideo (int idx_frame);
 
-gboolean VvlPausPlayback (void);
+gboolean VvlPausePlayback (void);
 gboolean VvlResumePlayback (void);
 gboolean VvlStopPlayback (void);
 

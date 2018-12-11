@@ -815,6 +815,8 @@ void *CheckEventThread (void *args)
         FD_SET (runinfo->sockfd, &fds);
 
 #ifndef WIN32
+        CheckFailedOperation (runinfo->vvlc_sockfd);
+
         if (runinfo->vvls_sockfd >= 0) {
             FD_SET (runinfo->vvls_sockfd, &fds);
             if (runinfo->vvls_sockfd > maxfd)
@@ -826,6 +828,7 @@ void *CheckEventThread (void *args)
             if (runinfo->vvlc_sockfd > maxfd)
                 maxfd = runinfo->vvlc_sockfd;
         }
+
 #endif /* !WIN32 */
 
         /* 1s */

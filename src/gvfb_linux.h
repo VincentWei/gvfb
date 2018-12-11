@@ -128,12 +128,14 @@ int Recv (int s, unsigned char *buf, int len, unsigned int flags);
 #define VRT_STOP_RECORD         43
 
 struct _vvlc_data_header {
-    int             type;
+    unsigned int    type;
     unsigned int    param1;
     unsigned int    param2;
     size_t          payload_len;
     char            payload[0];
 };
+
+void CheckFailedOperation (int vvlc_sockfd);
 
 /*
  * HandleVvlcRequest

@@ -274,6 +274,29 @@ int ConnectToMiniGUI (int ppid)
     return sockfd;
 }
 
+void CheckFailedOperation (int vvlc_sockfd)
+{
+    if (gvfbruninfo.video_layer_mode == 0x0101
+            && gvfbruninfo.video_record_stream) {
+
+        gvfbruninfo.video_layer_mode = 0x0100;
+
+        if (vvlc_sockfd >= 0) {
+            struct _vvlc_data_header header;
+            ssize_t n;
+
+            header.type = VRT_RESPONSE;
+            header.param1 = VRT_START_RECORD;
+            header.param2 = VRS_OPERATION_FAILED;
+            header.payload_len = 0;
+            n = write (gvfbruninfo.vvlc_sockfd, &header, sizeof (header));
+            if (n != sizeof (header)) {
+                msg_out (LEVEL_0, "Error when writting UNIX socket.");
+            }
+        }
+    }
+}
+
 gboolean HandleVvlcRequest (void)
 {
     ssize_t n = 0;
@@ -364,7 +387,7 @@ gboolean HandleVvlcRequest (void)
         if ((gvfbruninfo.video_layer_mode) & 0xFFFF != 0x0201) {
             status = VRS_BAD_OPERATION;
         }
-        else if (!VvlPausPlayback ()) {
+        else if (!VvlPausePlayback ()) {
             status = VRS_OPERATION_FAILED;
         }
         break;
@@ -437,8 +460,10 @@ gboolean HandleVvlcRequest (void)
         break;
     }
 
+    /* send response to client */
+    header.param1 = header.type;
+    header.param2 = status;
     header.type = VRT_RESPONSE;
-    header.param1 = status;
     header.payload_len = 0;
     n = write (gvfbruninfo.vvlc_sockfd, &header, sizeof (header));
     if (n != sizeof (header)) {

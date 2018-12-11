@@ -936,12 +936,24 @@ static void cleanup_motion_jpeg (void)
 {
     gvfbruninfo.video_layer_mode = 0;
 
+    if (gvfbruninfo.video_record_stream) {
+        g_output_stream_close (
+                G_OUTPUT_STREAM (gvfbruninfo.video_record_stream),
+                NULL, NULL);
+        g_object_unref (gvfbruninfo.video_record_stream);
+        gvfbruninfo.video_record_stream = NULL;
+        gvfbruninfo.nr_frames_recorded = 0;
+    }
+
     if (gvfbruninfo.motion_jpeg_info) {
         free (gvfbruninfo.motion_jpeg_info);
         gvfbruninfo.motion_jpeg_info = NULL;
     }
 
     if (gvfbruninfo.motion_jpeg_stream) {
+        g_input_stream_close (
+                G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
+                NULL, NULL);
         g_object_unref (gvfbruninfo.motion_jpeg_stream);
         gvfbruninfo.motion_jpeg_stream = NULL;
     }
@@ -989,7 +1001,6 @@ gboolean VvlOpenMotionJPEG (const char* file_name)
 
     GFile* file = g_file_new_for_path (file_name);
     gvfbruninfo.motion_jpeg_stream = g_file_read (file, NULL, NULL);
-    msg_out (LEVEL_0, "gvfbruninfo.motion_jpeg_stream: %p", gvfbruninfo.motion_jpeg_stream);
 
     if (gvfbruninfo.motion_jpeg_stream) {
         gsize my_size;
@@ -999,13 +1010,10 @@ gboolean VvlOpenMotionJPEG (const char* file_name)
         gvfbruninfo.motion_jpeg_info = (MotionJPEGInfo*)malloc (my_size);
 
         if (gvfbruninfo.motion_jpeg_stream && gvfbruninfo.motion_jpeg_info) {
-            msg_out (LEVEL_0, "gvfbruninfo.motion_jpeg_info: %p", gvfbruninfo.motion_jpeg_info);
 
             bytes_read = g_input_stream_read (
                 G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
                 gvfbruninfo.motion_jpeg_info, my_size, NULL, NULL);
-            msg_out (LEVEL_0, "gvfbruninfo.motion_jpeg_info->nr_frames: %d", gvfbruninfo.motion_jpeg_info->nr_frames);
-            msg_out (LEVEL_0, "byte_read: %ld", bytes_read);
 
             if ((gsize)bytes_read == my_size &&
                     gvfbruninfo.motion_jpeg_info->nr_frames > 0) {
@@ -1078,12 +1086,13 @@ gboolean VvlSetZoomLevel (int zoom_level)
     return TRUE;
 }
 
-/* Return vido length in seconds */
+/* Return video length in seconds */
 unsigned int VvlPlayVideo (const char* path, int idx_frame)
 {
     if (VvlOpenMotionJPEG (path)) {
         if (idx_frame >= gvfbruninfo.motion_jpeg_info->nr_frames)
-            gvfbruninfo.video_frame_idx = gvfbruninfo.motion_jpeg_info->nr_frames - 1;
+            gvfbruninfo.video_frame_idx
+                = gvfbruninfo.motion_jpeg_info->nr_frames - 1;
         else if (idx_frame < 0)
             gvfbruninfo.video_frame_idx = 0;
         else
@@ -1112,7 +1121,7 @@ gboolean VvlSeekVideo (int idx_frame)
     return FALSE;
 }
 
-gboolean VvlPausPlayback (void)
+gboolean VvlPausePlayback (void)
 {
     gvfbruninfo.video_layer_mode = 0x0200;
     return TRUE;
@@ -1131,18 +1140,179 @@ gboolean VvlStopPlayback (void)
     return TRUE;
 }
 
+#define LEN_RW_BUFF  8192
+
+static gboolean record_current_frame (GFileOutputStream* output_stream)
+{
+    guint32 left_size;
+    gssize bytes_read, bytes_wrotten;
+
+    g_seekable_seek (G_SEEKABLE(gvfbruninfo.motion_jpeg_stream),
+            gvfbruninfo.motion_jpeg_info
+                    ->frame_offset[gvfbruninfo.video_frame_idx],
+            G_SEEK_SET, NULL, NULL);
+
+    bytes_read = g_input_stream_read (
+            G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
+            &left_size, sizeof (guint32), NULL, NULL);
+
+    if (bytes_read != sizeof (guint32)) {
+        msg_out (LEVEL_0, "g_input_stream_read");
+        return FALSE;
+    }
+
+    while (left_size > 0) {
+        char buff[LEN_RW_BUFF];
+        gsize read_size = (left_size > LEN_RW_BUFF) ? LEN_RW_BUFF : left_size;
+
+        bytes_read = g_input_stream_read (
+                G_INPUT_STREAM (gvfbruninfo.motion_jpeg_stream),
+                buff, read_size, NULL, NULL);
+
+        bytes_wrotten = g_output_stream_write (
+                G_OUTPUT_STREAM (output_stream),
+                buff, bytes_read, NULL, NULL);
+
+        if (bytes_wrotten < bytes_read) // disk full
+            return FALSE;
+
+        if (bytes_read < read_size) // end of file
+            break;
+
+        left_size -= read_size;
+    }
+
+    return TRUE;
+}
+
 gboolean VvlCapturePhoto (const char* path)
 {
+    GFile* file = NULL;
+    GFileOutputStream* photo_stream = NULL;
+    guint32 left_size;
+    gssize bytes_read, bytes_wrotten;
+
+    if (gvfbruninfo.motion_jpeg_stream == NULL
+            || gvfbruninfo.motion_jpeg_info == NULL) {
+        return FALSE;
+    }
+
+    file = g_file_new_for_path (path);
+    photo_stream = g_file_create (file, G_FILE_CREATE_NONE, NULL, NULL);
+    if (photo_stream == NULL) {
+        goto error;
+    }
+
+    record_current_frame (photo_stream);
+
+    g_output_stream_close (
+            G_OUTPUT_STREAM (photo_stream), NULL, NULL);
+    g_object_unref (photo_stream);
+    g_object_unref (file);
     return TRUE;
+
+error:
+    if (photo_stream) {
+        g_output_stream_close (
+                G_OUTPUT_STREAM (photo_stream), NULL, NULL);
+        g_object_unref (photo_stream);
+    }
+    g_object_unref (file);
+    return FALSE;
 }
 
 gboolean VvlStartRecord (const char* path)
 {
+    GFile* file = NULL;
+    GFileOutputStream* video_stream = NULL;
+    MotionJPEGInfo header;
+    gssize bytes_wrotten;
+
+    if (gvfbruninfo.motion_jpeg_stream == NULL
+            || gvfbruninfo.motion_jpeg_info == NULL
+            || gvfbruninfo.video_record_stream != NULL
+            || gvfbruninfo.video_layer_mode != 0x0100) {
+        return FALSE;
+    }
+
+    file = g_file_new_for_path (path);
+    video_stream = g_file_create (file, G_FILE_CREATE_NONE, NULL, NULL);
+    if (video_stream == NULL) {
+        goto error;
+    }
+
+    memcpy (&header, gvfbruninfo.motion_jpeg_info, sizeof (MotionJPEGInfo));
+    header.nr_frames = 0;
+
+    // write header
+    bytes_wrotten = g_output_stream_write (
+            G_OUTPUT_STREAM (video_stream),
+            &header, sizeof (MotionJPEGInfo), NULL, NULL);
+
+    if (bytes_wrotten < sizeof (MotionJPEGInfo)) {
+        goto error;
+    }
+
+    g_object_unref (file);
+
+    gvfbruninfo.video_record_stream = video_stream;
+    gvfbruninfo.nr_frames_recorded = 0;
+    gvfbruninfo.video_layer_mode = 0x0101;
     return TRUE;
+
+error:
+    if (video_stream)
+        g_object_unref (video_stream);
+
+    g_file_delete (file, NULL, NULL);
+    g_object_unref (file);
+    return FALSE;
+}
+
+static void update_record_header (void)
+{
+    gssize bytes_wrotten;
+
+    gvfbruninfo.nr_frames_recorded++;
+
+    g_seekable_seek (G_SEEKABLE(gvfbruninfo.video_record_stream),
+            0, G_SEEK_SET, NULL, NULL);
+
+    bytes_wrotten = g_output_stream_write (
+            G_OUTPUT_STREAM (gvfbruninfo.video_record_stream),
+            &gvfbruninfo.nr_frames_recorded, sizeof (guint32), NULL, NULL);
+
+    if (bytes_wrotten < sizeof (guint32)) {
+        msg_out (LEVEL_0, "update_record_header failed (%u)",
+                gvfbruninfo.nr_frames_recorded);
+    }
+
+    /* alwasy seek to end of the stream */
+    g_seekable_seek (G_SEEKABLE(gvfbruninfo.video_record_stream),
+            0, G_SEEK_END, NULL, NULL);
+}
+
+static void cleanup_video_record_stream (void)
+{
+    g_output_stream_close (
+            G_OUTPUT_STREAM (gvfbruninfo.video_record_stream),
+            NULL, NULL);
+    g_object_unref (gvfbruninfo.video_record_stream);
+    gvfbruninfo.video_record_stream = NULL;
+    gvfbruninfo.nr_frames_recorded = 0;
 }
 
 gboolean VvlStopRecord (void)
 {
+    if (gvfbruninfo.motion_jpeg_stream == NULL
+            || gvfbruninfo.motion_jpeg_info == NULL
+            || gvfbruninfo.video_record_stream == NULL
+            || gvfbruninfo.video_layer_mode != 0x0101) {
+        return FALSE;
+    }
+
+    gvfbruninfo.video_layer_mode = 0x0100;
+    cleanup_video_record_stream ();
     return TRUE;
 }
 
@@ -1160,25 +1330,41 @@ void DrawImage (int x, int y, int width, int height)
             /* draw default background */
             if (gvfbruninfo.bkgnd_pixmap == NULL) {
                 gvfbruninfo.bkgnd_pixmap =
-                    gdk_pixmap_create_from_xpm_d (gvfbruninfo.draw_area->window,
-                                                  NULL, NULL, bg_xpm);
+                    gdk_pixmap_create_from_xpm_d (
+                            gvfbruninfo.draw_area->window,
+                            NULL, NULL, bg_xpm);
             }
 
             gdk_cairo_set_source_pixmap (cr, gvfbruninfo.bkgnd_pixmap, 0, 0);
             pattern = cairo_get_source (cr);
             cairo_pattern_set_extend (pattern, CAIRO_EXTEND_REPEAT);
-            cairo_rectangle (cr, 0, 0, gvfbruninfo.actual_w, gvfbruninfo.actual_h);
+            cairo_rectangle (cr, 0, 0,
+                    gvfbruninfo.actual_w, gvfbruninfo.actual_h);
             cairo_fill (cr);
         }
-        else if (gvfbruninfo.motion_jpeg_info && gvfbruninfo.motion_jpeg_stream) {
+        else if (gvfbruninfo.motion_jpeg_info
+                    && gvfbruninfo.motion_jpeg_stream) {
             /* draw video frame */
             GdkPixbuf *frame_pixbuf;
 
+            if (gvfbruninfo.video_layer_mode == 0x0101
+                    && gvfbruninfo.video_record_stream) {
+                if (record_current_frame (gvfbruninfo.video_record_stream)) {
+                    update_record_header ();
+                }
+                else {
+                    cleanup_video_record_stream ();
+                }
+            }
+
             g_seekable_seek (G_SEEKABLE(gvfbruninfo.motion_jpeg_stream),
-                    (goffset)(gvfbruninfo.motion_jpeg_info->frame_offset[gvfbruninfo.video_frame_idx] + sizeof (guint32)),
+                    (goffset)(gvfbruninfo.motion_jpeg_info
+                        ->frame_offset[gvfbruninfo.video_frame_idx]
+                        + sizeof (guint32)),
                     G_SEEK_SET, NULL, NULL);
 
-            frame_pixbuf = gdk_pixbuf_new_from_stream (G_INPUT_STREAM(gvfbruninfo.motion_jpeg_stream), NULL, NULL);
+            frame_pixbuf = gdk_pixbuf_new_from_stream (
+                    G_INPUT_STREAM(gvfbruninfo.motion_jpeg_stream), NULL, NULL);
             if (frame_pixbuf) {
                 if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0100) {
                     int zoom_level = gvfbruninfo.camera_zoom_level;
@@ -1187,8 +1373,10 @@ void DrawImage (int x, int y, int width, int height)
 
                     zoom_level = zoom_level / 16 + 1;
 
-                    frame_width = (int)(frame_width * zoom_level * gvfbruninfo.zoom_percent / 400.0f);
-                    frame_height = (int)(frame_height * zoom_level * gvfbruninfo.zoom_percent / 400.0f);
+                    frame_width = (int)(frame_width * zoom_level *
+                            gvfbruninfo.zoom_percent / 400.0f);
+                    frame_height = (int)(frame_height * zoom_level *
+                            gvfbruninfo.zoom_percent / 400.0f);
                     cairo_translate (cr,
                             (gvfbruninfo.actual_w - frame_width)/2.0f,
                             (gvfbruninfo.actual_h - frame_height)/2.0f);
@@ -1208,14 +1396,17 @@ void DrawImage (int x, int y, int width, int height)
 
             if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0100) {
                 gvfbruninfo.video_frame_idx++;
-                if (gvfbruninfo.video_frame_idx > gvfbruninfo.motion_jpeg_info->nr_frames) {
+                if (gvfbruninfo.video_frame_idx
+                        > gvfbruninfo.motion_jpeg_info->nr_frames) {
                     gvfbruninfo.video_frame_idx = 0;
                 }
             }
             else if ((gvfbruninfo.video_layer_mode & 0xFFFF) == 0x0201) {
                 gvfbruninfo.video_frame_idx++;
-                if (gvfbruninfo.video_frame_idx > gvfbruninfo.motion_jpeg_info->nr_frames) {
-                    gvfbruninfo.video_frame_idx = gvfbruninfo.motion_jpeg_info->nr_frames - 1;
+                if (gvfbruninfo.video_frame_idx
+                        > gvfbruninfo.motion_jpeg_info->nr_frames) {
+                    gvfbruninfo.video_frame_idx
+                        = gvfbruninfo.motion_jpeg_info->nr_frames - 1;
                     gvfbruninfo.video_layer_mode = 0x0200;
                 }
             }
@@ -1223,7 +1414,9 @@ void DrawImage (int x, int y, int width, int height)
 
         cairo_identity_matrix (cr);
         if (gvfbruninfo.zoom_percent != 100)
-            cairo_scale (cr, gvfbruninfo.zoom_percent / 100.0f, gvfbruninfo.zoom_percent / 100.0f);
+            cairo_scale (cr,
+                    gvfbruninfo.zoom_percent / 100.0f,
+                    gvfbruninfo.zoom_percent / 100.0f);
 
         /* draw graphics */
         gdk_cairo_set_source_pixbuf (cr, gvfbruninfo.pixbuf_r, 0, 0);
@@ -1238,7 +1431,9 @@ void DrawImage (int x, int y, int width, int height)
 
         /* draw graphics */
         if (gvfbruninfo.zoom_percent != 100)
-            cairo_scale (cr, gvfbruninfo.zoom_percent / 100.0f, gvfbruninfo.zoom_percent / 100.0f);
+            cairo_scale (cr,
+                    gvfbruninfo.zoom_percent / 100.0f,
+                    gvfbruninfo.zoom_percent / 100.0f);
         gdk_cairo_set_source_pixbuf (cr, gvfbruninfo.pixbuf_r, 0, 0);
         cairo_paint (cr);
 
@@ -1378,3 +1573,4 @@ static void set_skin_win_center (int width, int height)
                          gvfbruninfo.drawarea_x, gvfbruninfo.drawarea_y);
     }
 }
+

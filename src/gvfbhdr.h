@@ -207,6 +207,14 @@ typedef struct _GVFBRUNINFO {
     /* the index of the current frame of simulation video */
     unsigned int video_frame_idx;
 
+    /*
+     * the motion jpeg stream
+     * if video_layer_mode is 0x0101 but video_record_stream is null,
+     * it was failed to record the video.
+     */
+    GFileOutputStream *video_record_stream;
+    guint32 nr_frames_recorded;
+
     int refresh_rate;
 
     /* screen size */
