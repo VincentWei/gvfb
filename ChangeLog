@@ -1,4 +1,11 @@
 *******************************************************************************
+What's new in this version (1.2.2)
+12/15/2018 (VincentWei)
+	* ENHANCEMENT: Add Virtual Video Layer (VVL) to simulate camera and video playback.
+	* OPTIMIZATION: Use Cairo to render the VFB and VVL.
+	* ENHANCEMENT: Add vvlc-sample for VVL API.
+
+*******************************************************************************
 What's new in this version (1.2.1)
 10/24/2017 (VincentWei)
 	* CLEANUP: Add X11 stuff in CMakeList.txt to generate correct ld options.
