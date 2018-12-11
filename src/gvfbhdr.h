@@ -188,7 +188,7 @@ typedef struct _GVFBRUNINFO {
      *      1 for recording and 0 for idle.
      * 0x02xx for video playback;
      *      the lower byte is the current status,
-     *      1 for playing and 0 for paused.
+     *      0 for stopped, 1 for playing, 2 for paused, 3 for end.
      */
     unsigned int video_layer_mode;
 

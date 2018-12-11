@@ -110,6 +110,7 @@ int Recv (int s, unsigned char *buf, int len, unsigned int flags);
     #define VRS_INV_REQUEST         1
     #define VRS_BAD_OPERATION       2
     #define VRS_OPERATION_FAILED    3
+    #define VRS_OPERATION_FINISHED  4
 
 #define VRT_SET_GRAPH_ALPHA     11
 
@@ -135,13 +136,13 @@ struct _vvlc_data_header {
     char            payload[0];
 };
 
-void CheckFailedOperation (int vvlc_sockfd);
+gboolean CheckAsyncOperation (int vvlc_sockfd);
 
 /*
  * HandleVvlcRequest
  *          : Handle a request from Virtual Video Layer client.
  */
-gboolean HandleVvlcRequest (void);
+gboolean HandleVvlcRequest (int vvlc_sockfd);
 
 #endif /* end of _GVFB_LINUX_H_ */
 

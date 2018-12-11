@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <time.h>
 
+#include <linux/limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -29,8 +30,9 @@
     #define VRS_INV_REQUEST         1
     #define VRS_BAD_OPERATION       2
     #define VRS_OPERATION_FAILED    3
+    #define VRS_OPERATION_FINISHED  4
 
-    #define VRS_MAX                 VRS_OPERATION_FAILED
+    #define VRS_MAX                 VRS_OPERATION_FINISHED
 
 #define VRT_SET_GRAPH_ALPHA     11
 
@@ -87,6 +89,87 @@ static void exit_on_error (int fd)
     exit (2);
 }
 
+static const char* operation_name [] = {
+    "VRT_UNKNOWN(0)",        //      0
+    "VRT_RESPONSE",          //      1
+    "VRT_UNKNOWN(2)",        //      2
+    "VRT_UNKNOWN(3)",        //      3
+    "VRT_UNKNOWN(4)",        //      4
+    "VRT_UNKNOWN(5)",        //      5
+    "VRT_UNKNOWN(6)",        //      6
+    "VRT_UNKNOWN(7)",        //      7
+    "VRT_UNKNOWN(8)",        //      8
+    "VRT_UNKNOWN(9)",        //      9
+    "VRT_UNKNOWN(10)",       //      10
+    "VRT_SET_GRAPH_ALPHA",   //      11
+    "VRT_UNKNOWN(12)",       //      12
+    "VRT_UNKNOWN(13)",       //      13
+    "VRT_UNKNOWN(14)",       //      14
+    "VRT_UNKNOWN(15)",       //      15
+    "VRT_UNKNOWN(16)",       //      16
+    "VRT_UNKNOWN(17)",       //      17
+    "VRT_UNKNOWN(18)",       //      18
+    "VRT_UNKNOWN(19)",       //      19
+    "VRT_UNKNOWN(20)",       //      20
+    "VRT_OPEN_CAMERA",       //      21
+    "VRT_CLOSE_CAMERA",      //      22
+    "VRT_SET_ZOOM_LEVEL",    //      23
+    "VRT_UNKNOWN(24)",       //      24
+    "VRT_UNKNOWN(25)",       //      25
+    "VRT_UNKNOWN(26)",       //      26
+    "VRT_UNKNOWN(27)",       //      27
+    "VRT_UNKNOWN(28)",       //      28
+    "VRT_UNKNOWN(29)",       //      29
+    "VRT_UNKNOWN(30)",       //      30
+    "VRT_PLAY_VIDEO",        //      31
+    "VRT_SEEK_VIDEO",        //      32
+    "VRT_PAUSE_PLAYBACK",    //      33
+    "VRT_RESUME_PLAYBACK",   //      34
+    "VRT_STOP_PLAYBACK",     //      35
+    "VRT_UNKNOWN(36)",       //      36
+    "VRT_UNKNOWN(37)",       //      37
+    "VRT_UNKNOWN(38)",       //      38
+    "VRT_UNKNOWN(39)",       //      39
+    "VRT_UNKNOWN(40)",       //      40
+    "VRT_CAPTURE_PHOTO",     //      41
+    "VRT_START_RECORD",      //      42
+    "VRT_STOP_RECORD",       //      43
+};
+
+static const char* status_name [] = {
+    "VRS_OK",
+    "VRS_INV_REQUEST",
+    "VRS_BAD_OPERATION",
+    "VRS_OPERATION_FAILED",
+    "VRS_OPERATION_FINISHED",
+};
+
+static int handle_response (int fd)
+{
+    ssize_t n;
+    struct _vvlc_data_header response;
+
+    n = read (fd, &response, sizeof (struct _vvlc_data_header));
+    if (n < sizeof (struct _vvlc_data_header)) {
+        printf ("Error when reading UNIX socket (%lu to read, %ld got).\n",
+                sizeof (struct _vvlc_data_header), n);
+        exit_on_error(fd);
+    }
+
+    if (response.type != VRT_RESPONSE
+            || response.param1 > VRT_MAX
+            || response.param2 > VRS_MAX) {
+        printf ("Wrong response packet (type: %d, operation: %d, status: %d).\n",
+                response.type, response.param1, response.param2);
+    }
+    else {
+        printf ("Response from VVLS (Operation: %s; Status: %s).\n",
+                operation_name [response.param1], status_name [response.param2]);
+    }
+
+    return 0;
+}
+
 static void write_request (int fd, const struct _vvlc_data_header* request,
         int request_len)
 {
@@ -103,10 +186,10 @@ static void write_request (int fd, const struct _vvlc_data_header* request,
 static void got_file_path (char* path)
 {
     printf ("\nPlease input a file path:\n");
-    scanf("%ms", &path);
+    scanf("%s", path);
 }
 
-static void open_camera (int fd, const char* path)
+static struct _vvlc_data_header* prepare_packet_with_path (const char* path)
 {
     struct _vvlc_data_header* packet;
 
@@ -114,28 +197,88 @@ static void open_camera (int fd, const char* path)
             calloc (1, sizeof (struct _vvlc_data_header) + strlen (path) + 1);
 
     if (packet == NULL) {
-        printf ("Failed to prepare packet\n");
-        return;
+        return NULL;
     }
 
     packet->type = VRT_OPEN_CAMERA;
     packet->payload_len = strlen (path) + 1;
     memcpy (packet->payload, path, packet->payload_len);
 
+    return packet;
+}
+
+static void open_camera (int fd, const char* path, int zoom_level)
+{
+    struct _vvlc_data_header* packet;
+
+    packet = prepare_packet_with_path (path);
+    if (packet == NULL) {
+        printf ("%s: failed to prepare packet\n", __FUNCTION__);
+        return;
+    }
+    packet->type = VRT_OPEN_CAMERA;
+    packet->param1 = zoom_level;
+
     write_request (fd, packet,
             sizeof (struct _vvlc_data_header) + packet->payload_len);
+
+    free (packet);
+}
+
+static void set_graph_alpha (int fd, int alpha)
+{
+    struct _vvlc_data_header packet;
+
+    packet.type = VRT_SET_GRAPH_ALPHA;
+    packet.param1 = alpha;
+    packet.param2 = 0;
+    packet.payload_len = 0;
+    write_request (fd, &packet, sizeof (struct _vvlc_data_header));
 }
 
 static void capture_photo (int fd, const char* path)
 {
+    struct _vvlc_data_header* packet;
+
+    packet = prepare_packet_with_path (path);
+    if (packet == NULL) {
+        printf ("%s: failed to prepare packet\n", __FUNCTION__);
+        return;
+    }
+    packet->type = VRT_CAPTURE_PHOTO;
+
+    write_request (fd, packet,
+            sizeof (struct _vvlc_data_header) + packet->payload_len);
+
+    free (packet);
 }
 
 static void start_video_record (int fd, const char* path)
 {
+    struct _vvlc_data_header* packet;
+
+    packet = prepare_packet_with_path (path);
+    if (packet == NULL) {
+        printf ("%s: failed to prepare packet\n", __FUNCTION__);
+        return;
+    }
+    packet->type = VRT_START_RECORD;
+
+    write_request (fd, packet,
+            sizeof (struct _vvlc_data_header) + packet->payload_len);
+
+    free (packet);
 }
 
 static void stop_video_record (int fd)
 {
+    struct _vvlc_data_header packet;
+
+    packet.type = VRT_STOP_RECORD;
+    packet.param1 = 0;
+    packet.param2 = 0;
+    packet.payload_len = 0;
+    write_request (fd, &packet, sizeof (struct _vvlc_data_header));
 }
 
 static void close_camera (int fd)
@@ -143,12 +286,27 @@ static void close_camera (int fd)
     struct _vvlc_data_header packet;
 
     packet.type = VRT_CLOSE_CAMERA;
+    packet.param1 = 0;
+    packet.param2 = 0;
     packet.payload_len = 0;
     write_request (fd, &packet, sizeof (struct _vvlc_data_header));
 }
 
 static void play_video (int fd, const char* path)
 {
+    struct _vvlc_data_header* packet;
+
+    packet = prepare_packet_with_path (path);
+    if (packet == NULL) {
+        printf ("%s: failed to prepare packet\n", __FUNCTION__);
+        return;
+    }
+    packet->type = VRT_PLAY_VIDEO;
+
+    write_request (fd, packet,
+            sizeof (struct _vvlc_data_header) + packet->payload_len);
+
+    free (packet);
 }
 
 static void pause_video_playback (int fd)
@@ -156,6 +314,8 @@ static void pause_video_playback (int fd)
     struct _vvlc_data_header packet;
 
     packet.type = VRT_PAUSE_PLAYBACK;
+    packet.param1 = 0;
+    packet.param2 = 0;
     packet.payload_len = 0;
     write_request (fd, &packet, sizeof (struct _vvlc_data_header));
 }
@@ -165,6 +325,8 @@ static void resume_video_playback (int fd)
     struct _vvlc_data_header packet;
 
     packet.type = VRT_RESUME_PLAYBACK;
+    packet.param1 = 0;
+    packet.param2 = 0;
     packet.payload_len = 0;
     write_request (fd, &packet, sizeof (struct _vvlc_data_header));
 }
@@ -174,93 +336,30 @@ static void stop_video_playback (int fd)
     struct _vvlc_data_header packet;
 
     packet.type = VRT_STOP_PLAYBACK;
+    packet.param1 = 0;
+    packet.param2 = 0;
     packet.payload_len = 0;
     write_request (fd, &packet, sizeof (struct _vvlc_data_header));
 }
 
-static const char* operation_name [] = {
-    "VRT_UNKNOWN(0)"        //      0
-    "VRT_RESPONSE"          //      1
-    "VRT_UNKNOWN(2)"        //      2
-    "VRT_UNKNOWN(3)"        //      3
-    "VRT_UNKNOWN(4)"        //      4
-    "VRT_UNKNOWN(5)"        //      5
-    "VRT_UNKNOWN(6)"        //      6
-    "VRT_UNKNOWN(7)"        //      7
-    "VRT_UNKNOWN(8)"        //      8
-    "VRT_UNKNOWN(9)"        //      9
-    "VRT_UNKNOWN(10)"       //      10
-    "VRT_SET_GRAPH_ALPHA"   //      11
-    "VRT_UNKNOWN(12)"       //      12
-    "VRT_UNKNOWN(13)"       //      13
-    "VRT_UNKNOWN(14)"       //      14
-    "VRT_UNKNOWN(15)"       //      15
-    "VRT_UNKNOWN(16)"       //      16
-    "VRT_UNKNOWN(17)"       //      17
-    "VRT_UNKNOWN(18)"       //      18
-    "VRT_UNKNOWN(19)"       //      19
-    "VRT_UNKNOWN(20)"       //      20
-    "VRT_OPEN_CAMERA"       //      21
-    "VRT_CLOSE_CAMERA"      //      22
-    "VRT_SET_ZOOM_LEVEL"    //      23
-    "VRT_UNKNOWN(24)"       //      24
-    "VRT_UNKNOWN(25)"       //      25
-    "VRT_UNKNOWN(26)"       //      26
-    "VRT_UNKNOWN(27)"       //      27
-    "VRT_UNKNOWN(28)"       //      28
-    "VRT_UNKNOWN(29)"       //      29
-    "VRT_UNKNOWN(30)"       //      30
-    "VRT_PLAY_VIDEO"        //      31
-    "VRT_SEEK_VIDEO"        //      32
-    "VRT_PAUSE_PLAYBACK"    //      33
-    "VRT_RESUME_PLAYBACK"   //      34
-    "VRT_STOP_PLAYBACK"     //      35
-    "VRT_UNKNOWN(36)"       //      36
-    "VRT_UNKNOWN(37)"       //      37
-    "VRT_UNKNOWN(38)"       //      30
-    "VRT_UNKNOWN(39)"       //      39
-    "VRT_UNKNOWN(40)"       //      40
-    "VRT_CAPTURE_PHOTO"     //      41
-    "VRT_START_RECORD"      //      42
-    "VRT_STOP_RECORD"       //      43
-};
-
-static const char* status_name [] = {
-    "VRS_OK",
-    "VRS_INV_REQUEST",
-    "VRS_BAD_OPERATION",
-    "VRS_OPERATION_FAILED",
-};
-
-static void handle_response (int fd)
+static void zoom_camera (int fd, int zoom_level)
 {
-    ssize_t n;
-    struct _vvlc_data_header response;
+    struct _vvlc_data_header packet;
 
-    n = read (fd, &response, sizeof (struct _vvlc_data_header));
-    if (n != sizeof (struct _vvlc_data_header)) {
-        printf ("Error when reading UNIX socket (%lu to read, %ld got).\n",
-                sizeof (struct _vvlc_data_header), n);
-        exit_on_error(fd);
-    }
-
-    if (response.type != VRT_RESPONSE
-            || response.param1 > VRT_MAX
-            || response.param1 > VRS_MAX) {
-        printf ("Wrong response packet (type: %d, operation: %d, status: %d).\n",
-                response.type, response.param1, response.param2);
-    }
-    else {
-        printf ("Response from VVLS (Operation: %s; Status: %s).\n",
-                operation_name [response.param1], status_name [response.param2]);
-    }
+    packet.type = VRT_SET_ZOOM_LEVEL;
+    packet.param1 = zoom_level;
+    packet.param2 = 0;
+    packet.payload_len = 0;
+    write_request (fd, &packet, sizeof (struct _vvlc_data_header));
 }
 
 int main (int argc, const char* argv[])
 {
     int cmd;
     int fd = connect_to_vvls (SOCKET_VVLS);
-    char* path;
+    char path[PATH_MAX];
+    int zoom_level = 0;
+
 
     if (fd < 0)
         return 1;
@@ -277,7 +376,6 @@ int main (int argc, const char* argv[])
         tv.tv_sec = 0;
         tv.tv_usec = 500 * 1000;
         ret = select (fd + 1, &fds, NULL, NULL, &tv);
-
         if (ret < 0) {
             if (errno == EINTR) {
                 continue;
@@ -286,9 +384,11 @@ int main (int argc, const char* argv[])
         }
         else if (ret > 0 && FD_ISSET (fd, &fds)) {
             handle_response (fd);
+            continue;
         }
 
         printf ("Please choose a command:\n");
+        printf ("\t0) Quit.\n");
         printf ("\t1) Open camera.\n");
         printf ("\t2) Capture a photo.\n");
         printf ("\t3) Start video record.\n");
@@ -298,7 +398,8 @@ int main (int argc, const char* argv[])
         printf ("\t7) Pause video playback.\n");
         printf ("\t8) Resume video playback.\n");
         printf ("\t9) Stop video playback.\n");
-        printf ("\t0) Quit.\n");
+        printf ("\t10) Zoom in camera.\n");
+        printf ("\t11) Zoom out camera.\n");
 
         scanf ("%d", &cmd);
 
@@ -310,20 +411,18 @@ int main (int argc, const char* argv[])
 
         case 1:
             got_file_path (path);
-            open_camera (fd, path);
-            free (path);
+            open_camera (fd, path, zoom_level);
+            set_graph_alpha (fd, 200);
             break;
 
         case 2:
             got_file_path (path);
             capture_photo (fd, path);
-            free (path);
             break;
 
         case 3:
             got_file_path (path);
             start_video_record (fd, path);
-            free (path);
             break;
 
         case 4:
@@ -332,12 +431,13 @@ int main (int argc, const char* argv[])
 
         case 5:
             close_camera (fd);
+            set_graph_alpha (fd, 255);
             break;
 
         case 6:
             got_file_path (path);
             play_video (fd, path);
-            free (path);
+            set_graph_alpha (fd, 128);
             break;
 
         case 7:
@@ -350,6 +450,16 @@ int main (int argc, const char* argv[])
 
         case 9:
             stop_video_playback (fd);
+            break;
+
+        case 10:
+            zoom_level += 0x30;
+            zoom_camera (fd, zoom_level);
+            break;
+
+        case 11:
+            zoom_level -= 0x30;
+            zoom_camera (fd, zoom_level);
             break;
         }
     }

@@ -815,7 +815,12 @@ void *CheckEventThread (void *args)
         FD_SET (runinfo->sockfd, &fds);
 
 #ifndef WIN32
-        CheckFailedOperation (runinfo->vvlc_sockfd);
+        if (runinfo->vvlc_sockfd >= 0) {
+            if (!CheckAsyncOperation (runinfo->vvlc_sockfd)) {
+                close (runinfo->vvlc_sockfd);
+                runinfo->vvlc_sockfd = -1;
+            }
+        }
 
         if (runinfo->vvls_sockfd >= 0) {
             FD_SET (runinfo->vvls_sockfd, &fds);
@@ -828,7 +833,6 @@ void *CheckEventThread (void *args)
             if (runinfo->vvlc_sockfd > maxfd)
                 maxfd = runinfo->vvlc_sockfd;
         }
-
 #endif /* !WIN32 */
 
         /* 0.1s */
@@ -844,7 +848,7 @@ void *CheckEventThread (void *args)
             }
 #endif /* !WIN32 */
 
-            msg_out (LEVEL_0, "select.");
+            msg_out (LEVEL_0, "Failed to select.");
 
             err_flag = 1;
 
@@ -866,18 +870,23 @@ void *CheckEventThread (void *args)
             if (fd < 0) {
                 msg_out (LEVEL_0, "Failed to accept connection request");
             }
-            else {
-                if (runinfo->vvlc_sockfd < 0) {
-                    runinfo->vvlc_sockfd = fd;
-                }
-                else {
-                    close (fd);
-                }
+            else if (runinfo->vvlc_sockfd < 0) {
+                runinfo->vvlc_sockfd = fd;
+                msg_out (LEVEL_0, "Accepted VVLC connection request: %d", fd);
             }
+            else {
+                close (fd);
+            }
+
+            continue;
         }
         else if (runinfo->vvlc_sockfd >= 0 &&
                 FD_ISSET (runinfo->vvlc_sockfd, &fds)) {
-            HandleVvlcRequest ();
+            if (!HandleVvlcRequest (runinfo->vvlc_sockfd)) {
+                close (runinfo->vvlc_sockfd);
+                runinfo->vvlc_sockfd = -1;
+            }
+            continue;
         }
         else if (!FD_ISSET (runinfo->sockfd, &fds)) {
             continue;
@@ -896,7 +905,6 @@ void *CheckEventThread (void *args)
             }
 
             runinfo->running = FALSE;
-
             break;
         }
 
@@ -914,7 +922,6 @@ void *CheckEventThread (void *args)
                 }
 
                 runinfo->running = FALSE;
-
                 break;
             }
 
@@ -924,7 +931,6 @@ void *CheckEventThread (void *args)
                 err_flag = 1;
 
                 runinfo->running = FALSE;
-
                 break;
             }
 
@@ -957,12 +963,10 @@ void *CheckEventThread (void *args)
             if (ret != sizeof (int)) {
                 if (ret < 0) {
                     msg_out (LEVEL_0, "recv show hide error.");
-
                     err_flag = 1;
                 }
 
                 runinfo->running = FALSE;
-
                 break;
             }
 
@@ -979,7 +983,6 @@ void *CheckEventThread (void *args)
             if (ret != sizeof (int)) {
                 if (ret < 0) {
                     msg_out (LEVEL_0, "recv mouse postion error.");
-
                     err_flag = 1;
                 }
 
@@ -994,7 +997,6 @@ void *CheckEventThread (void *args)
             if (ret != sizeof (int)) {
                 if (ret < 0) {
                     msg_out (LEVEL_0, "recv mouse postion error.");
-
                     err_flag = 1;
                 }
 
@@ -1041,7 +1043,10 @@ void *CheckEventThread (void *args)
             /* do nothing */
             break;
         } /* end switch */
+
     } /* end while */
+
+    msg_out (LEVEL_0, "waiting for the quit of draw thread");
 
     g_thread_join (drawthread);
 

@@ -274,17 +274,16 @@ int ConnectToMiniGUI (int ppid)
     return sockfd;
 }
 
-void CheckFailedOperation (int vvlc_sockfd)
+gboolean CheckAsyncOperation (int vvlc_sockfd)
 {
-    if (gvfbruninfo.video_layer_mode == 0x0101
-            && gvfbruninfo.video_record_stream) {
+    struct _vvlc_data_header header;
+    ssize_t n;
 
+    if (gvfbruninfo.video_layer_mode == 0x0101
+            && gvfbruninfo.video_record_stream == NULL) {
         gvfbruninfo.video_layer_mode = 0x0100;
 
         if (vvlc_sockfd >= 0) {
-            struct _vvlc_data_header header;
-            ssize_t n;
-
             header.type = VRT_RESPONSE;
             header.param1 = VRT_START_RECORD;
             header.param2 = VRS_OPERATION_FAILED;
@@ -292,26 +291,45 @@ void CheckFailedOperation (int vvlc_sockfd)
             n = write (gvfbruninfo.vvlc_sockfd, &header, sizeof (header));
             if (n != sizeof (header)) {
                 msg_out (LEVEL_0, "Error when writting UNIX socket.");
+                return FALSE;
             }
         }
     }
+
+    if (gvfbruninfo.video_layer_mode == 0x0203) {
+        gvfbruninfo.video_layer_mode = 0x0200;
+
+        if (vvlc_sockfd >= 0) {
+            header.type = VRT_RESPONSE;
+            header.param1 = VRT_PLAY_VIDEO;
+            header.param2 = VRS_OPERATION_FINISHED;
+            header.payload_len = 0;
+            n = write (gvfbruninfo.vvlc_sockfd, &header, sizeof (header));
+            if (n != sizeof (header)) {
+                msg_out (LEVEL_0, "Error when writting UNIX socket.");
+                return FALSE;
+            }
+        }
+    }
+
+    return TRUE;
 }
 
-gboolean HandleVvlcRequest (void)
+gboolean HandleVvlcRequest (int fd)
 {
     ssize_t n = 0;
     struct _vvlc_data_header header;
     int status = VRS_OK;
     char path [PATH_MAX];
 
-    n = read (gvfbruninfo.vvlc_sockfd, &header, sizeof (header));
-    if (n == 0) {
+    n = read (fd, &header, sizeof (header));
+    if (n < sizeof (header)) {
+        msg_out (LEVEL_0, "Failed to read from vvlc socket");
         return FALSE;
     }
 
-    if (n < sizeof (header)) {
-        return FALSE;
-    }
+    msg_out (LEVEL_0, "got a request (%d) with param1 (%d), param2 (%d)",
+            header.type, header.param1, header.param2);
 
     Lock ();
 
@@ -328,7 +346,7 @@ gboolean HandleVvlcRequest (void)
             status = VRS_INV_REQUEST;
         }
         else {
-            n = read (gvfbruninfo.vvlc_sockfd, path, header.payload_len);
+            n = read (fd, path, header.payload_len);
             if (n < header.payload_len) {
                 status = VRS_INV_REQUEST;
             }
@@ -339,7 +357,7 @@ gboolean HandleVvlcRequest (void)
         break;
 
     case VRT_CLOSE_CAMERA:
-        if ((gvfbruninfo.video_layer_mode) & 0xFF00 != 0x0100) {
+        if ((gvfbruninfo.video_layer_mode & 0xFF00) != 0x0100) {
             status = VRS_BAD_OPERATION;
         }
         else if (!VvlCloseCamera ()) {
@@ -348,7 +366,7 @@ gboolean HandleVvlcRequest (void)
         break;
 
     case VRT_SET_ZOOM_LEVEL:
-        if ((gvfbruninfo.video_layer_mode) & 0xFF00 != 0x0100) {
+        if ((gvfbruninfo.video_layer_mode & 0xFF00) != 0x0100) {
             status = VRS_BAD_OPERATION;
         }
         else if (!VvlSetZoomLevel (header.param1)) {
@@ -364,18 +382,18 @@ gboolean HandleVvlcRequest (void)
             status = VRS_INV_REQUEST;
         }
         else {
-            n = read (gvfbruninfo.vvlc_sockfd, path, header.payload_len);
+            n = read (fd, path, header.payload_len);
             if (n < header.payload_len) {
                 status = VRS_INV_REQUEST;
             }
-            else if (VvlPlayVideo (path, header.param1) == 0) {
-                status = VRS_OPERATION_FAILED;
+            else {
+                status = VvlPlayVideo (path, header.param1);
             }
         }
         break;
 
     case VRT_SEEK_VIDEO:
-        if ((gvfbruninfo.video_layer_mode) & 0xFF00 != 0x0200) {
+        if ((gvfbruninfo.video_layer_mode & 0xFF00) != 0x0200) {
             status = VRS_BAD_OPERATION;
         }
         else if (!VvlSeekVideo (header.param1)) {
@@ -384,7 +402,7 @@ gboolean HandleVvlcRequest (void)
         break;
 
     case VRT_PAUSE_PLAYBACK:
-        if ((gvfbruninfo.video_layer_mode) & 0xFFFF != 0x0201) {
+        if ((gvfbruninfo.video_layer_mode & 0xFFFF) != 0x0201) {
             status = VRS_BAD_OPERATION;
         }
         else if (!VvlPausePlayback ()) {
@@ -393,7 +411,7 @@ gboolean HandleVvlcRequest (void)
         break;
 
     case VRT_RESUME_PLAYBACK:
-        if ((gvfbruninfo.video_layer_mode) & 0xFFFF != 0x0200) {
+        if ((gvfbruninfo.video_layer_mode & 0xFFFF) != 0x0202) {
             status = VRS_BAD_OPERATION;
         }
         else if (!VvlResumePlayback ()) {
@@ -418,7 +436,7 @@ gboolean HandleVvlcRequest (void)
             status = VRS_INV_REQUEST;
         }
         else {
-            n = read (gvfbruninfo.vvlc_sockfd, path, header.payload_len);
+            n = read (fd, path, header.payload_len);
             if (n < header.payload_len) {
                 status = VRS_INV_REQUEST;
             }
@@ -429,14 +447,14 @@ gboolean HandleVvlcRequest (void)
         break;
 
     case VRT_START_RECORD:
-        if ((gvfbruninfo.video_layer_mode) & 0xFFFF != 0x0100) {
+        if ((gvfbruninfo.video_layer_mode & 0xFFFF) != 0x0100) {
             status = VRS_BAD_OPERATION;
         }
         else if (header.payload_len <= 0) {
             status = VRS_INV_REQUEST;
         }
         else {
-            n = read (gvfbruninfo.vvlc_sockfd, path, header.payload_len);
+            n = read (fd, path, header.payload_len);
             if (n < header.payload_len) {
                 status = VRS_INV_REQUEST;
             }
@@ -447,7 +465,7 @@ gboolean HandleVvlcRequest (void)
         break;
 
     case VRT_STOP_RECORD:
-        if ((gvfbruninfo.video_layer_mode) & 0xFFFF != 0x0101) {
+        if ((gvfbruninfo.video_layer_mode & 0xFFFF) != 0x0101) {
             status = VRS_BAD_OPERATION;
         }
         else if (!VvlStopRecord ()) {
@@ -465,9 +483,11 @@ gboolean HandleVvlcRequest (void)
     header.param2 = status;
     header.type = VRT_RESPONSE;
     header.payload_len = 0;
-    n = write (gvfbruninfo.vvlc_sockfd, &header, sizeof (header));
+    n = write (fd, &header, sizeof (header));
     if (n != sizeof (header)) {
         msg_out (LEVEL_0, "Error when writting UNIX socket.");
+        UnLock ();
+        return FALSE;
     }
 
     UnLock ();

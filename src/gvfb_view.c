@@ -936,7 +936,7 @@ void InitMenu (void)
 
 static void cleanup_motion_jpeg (void)
 {
-    gvfbruninfo.video_layer_mode = 0;
+    gvfbruninfo.video_layer_mode = 0x0000;
 
     if (gvfbruninfo.video_record_stream) {
         g_output_stream_close (
@@ -1100,6 +1100,7 @@ unsigned int VvlPlayVideo (const char* path, int idx_frame)
         else
             gvfbruninfo.video_frame_idx = idx_frame;
 
+        gvfbruninfo.video_layer_mode = 0x0201;
         return gvfbruninfo.motion_jpeg_info->nr_frames /
                     gvfbruninfo.motion_jpeg_info->frame_rate;
     }
@@ -1125,7 +1126,7 @@ gboolean VvlSeekVideo (int idx_frame)
 
 gboolean VvlPausePlayback (void)
 {
-    gvfbruninfo.video_layer_mode = 0x0200;
+    gvfbruninfo.video_layer_mode = 0x0202;
     return TRUE;
 }
 
@@ -1328,7 +1329,7 @@ void DrawImage (int x, int y, int width, int height)
 
         cr = gdk_cairo_create (gvfbruninfo.draw_area->window);
 
-        if (gvfbruninfo.video_layer_mode == 0) {
+        if (gvfbruninfo.video_layer_mode == 0x0000) {
             /* draw default background */
             if (gvfbruninfo.bkgnd_pixmap == NULL) {
                 gvfbruninfo.bkgnd_pixmap =
@@ -1409,7 +1410,7 @@ void DrawImage (int x, int y, int width, int height)
                         > gvfbruninfo.motion_jpeg_info->nr_frames) {
                     gvfbruninfo.video_frame_idx
                         = gvfbruninfo.motion_jpeg_info->nr_frames - 1;
-                    gvfbruninfo.video_layer_mode = 0x0200;
+                    gvfbruninfo.video_layer_mode = 0x0203;
                 }
             }
         }
