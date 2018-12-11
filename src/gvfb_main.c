@@ -831,7 +831,7 @@ void *CheckEventThread (void *args)
 
 #endif /* !WIN32 */
 
-        /* 1s */
+        /* 0.1s */
         tv.tv_sec = 0;
         tv.tv_usec = 100 * 1000;
 

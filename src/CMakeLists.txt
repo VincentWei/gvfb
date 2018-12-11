@@ -7,7 +7,7 @@ LIST (APPEND SRC_LIST
 IF (WIN32)
     LIST (APPEND SRC_LIST gvfb_win32.c getopt_long.c)
 ELSE ()
-    LIST (APPEND SRC_LIST gvfb_linux.c) 
+    LIST (APPEND SRC_LIST gvfb_linux.c)
 ENDIF (WIN32)
 
 INCLUDE (FindPkgConfig)

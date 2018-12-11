@@ -32,6 +32,8 @@
 #include "gvfb_view.h"
 #include "gvfb_log.h"
 
+#undef DEBUG
+
 /* local function */
 static void on_im_commit_cb (GtkIMContext * context, const gchar * str);
 static gboolean on_im_focus_event_cb (GtkWidget * widget,

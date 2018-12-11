@@ -8,7 +8,7 @@
 #define OPT_SHOWGTKCURSOR TRUE
 
 /* refresh rate */
-#define OPT_REFRESHRATE   30
+#define OPT_REFRESHRATE   25
 
 #endif /* #ifndef _GVFB_OPTION_H_ */
 
