@@ -1,0 +1,5 @@
+SET (PROJECT_NAME vvlc-sample)
+
+LIST (APPEND SRC_LIST vvlc-sample.c)
+
+ADD_EXECUTABLE (${PROJECT_NAME} ${SRC_LIST})
