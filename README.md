@@ -8,7 +8,7 @@ This program (gvfb) is compliant to MiniGUI V3.0's XVFB specification.
 
 ## Prerequisites
 
-    * Gtk-2.0 development headers and libraries (libgtk2.0-dev pkg on Ubuntu).
+* Gtk-2.0 development headers and libraries (libgtk2.0-dev pkg on Ubuntu).
 
 ## Building
 
@@ -49,5 +49,5 @@ And then you should change something in MiniGUI.cfg:
 
 The following people took and/or are taking part in the development of GVFB:
 
-    Vincent Wei 
-    Wang Xubin 
+* Vincent Wei
+* Wang Xubin
