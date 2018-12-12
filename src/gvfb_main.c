@@ -472,10 +472,8 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
     gvfbruninfo.video_layer_mode = 0x0000;
     gvfbruninfo.graph_alpha_channel = 127;
 #else
-    VvlOpenMotionJPEG ("/tmp/test.mjpeg");
-
-    gvfbruninfo.video_layer_mode = 0x0100;
-    gvfbruninfo.graph_alpha_channel = 127;
+    gvfbruninfo.video_layer_mode = 0x0000;
+    gvfbruninfo.graph_alpha_channel = 255;
     gvfbruninfo.camera_zoom_level = 0x30;
 
     gvfbruninfo.vvls_sockfd = -1;
