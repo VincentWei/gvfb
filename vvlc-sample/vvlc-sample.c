@@ -42,7 +42,6 @@
 #include <errno.h>
 
 #define SOCKET_VVLS     "/tmp/pcxvvl_socket"
-#define CAMERA_MJPEG_FILE   "camera.mjpeg"
 
 #define VRT_RESPONSE            1
     #define VRS_OK                  0
