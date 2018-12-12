@@ -47,7 +47,11 @@ And then you should change something in MiniGUI.cfg:
 
 ## AUTHORS
 
-The following people took and/or are taking part in the development of GVFB:
+The current maintainers and/or developers:
 
 * Vincent Wei
-* Wang Xubin
+
+The following people have been involved in the development of GVFB:
+
+* WANG Xubin
+
