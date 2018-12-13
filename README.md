@@ -28,7 +28,7 @@ And then you should change something in MiniGUI.cfg:
 	window_caption=GVFB-for-MiniGUI-3.2-(Gtk-Version)
 	exec_file=/usr/local/bin/gvfb
 
-## COPYING
+## Copying
 
     Copyright (C) 2010~2018, Beijing FMSoft Technologies Co., Ltd.
 
@@ -45,13 +45,13 @@ And then you should change something in MiniGUI.cfg:
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-## AUTHORS
+## Authors
 
 The current maintainers and/or developers:
 
 * Vincent Wei
 
-The following people have been involved in the development of GVFB:
+The following people had been involved in the development of GVFB:
 
 * WANG Xubin
 
