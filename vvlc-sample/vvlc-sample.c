@@ -57,6 +57,8 @@
 #define VRT_OPEN_CAMERA         21
 #define VRT_CLOSE_CAMERA        22
 #define VRT_SET_ZOOM_LEVEL      23
+#define VRT_FREEZE_CAMERA       24
+#define VRT_UNFREEZE_CAMERA     25
 
 #define VRT_PLAY_VIDEO          31
 #define VRT_SEEK_VIDEO          32
@@ -132,8 +134,8 @@ static const char* operation_name [] = {
     "VRT_OPEN_CAMERA",       //      21
     "VRT_CLOSE_CAMERA",      //      22
     "VRT_SET_ZOOM_LEVEL",    //      23
-    "VRT_UNKNOWN(24)",       //      24
-    "VRT_UNKNOWN(25)",       //      25
+    "VRT_FREEZE_CAMERA",     //      24
+    "VRT_UNFREEZE_CAMERA",   //      25
     "VRT_UNKNOWN(26)",       //      26
     "VRT_UNKNOWN(27)",       //      27
     "VRT_UNKNOWN(28)",       //      28

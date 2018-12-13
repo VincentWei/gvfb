@@ -400,6 +400,23 @@ gboolean HandleVvlcRequest (int fd)
         }
         break;
 
+    case VRT_FREEZE_CAMERA:
+        if ((gvfbruninfo.video_layer_mode & 0xFFFF) != 0x0100) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (!VvlFreezeCamera ()) {
+            status = VRS_OPERATION_FAILED;
+        }
+        break;
+
+    case VRT_UNFREEZE_CAMERA:
+        if ((gvfbruninfo.video_layer_mode & 0xFFFF) != 0x0103) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (!VvlUnfreezeCamera ()) {
+            status = VRS_OPERATION_FAILED;
+        } break;
+
     case VRT_PLAY_VIDEO:
         if (gvfbruninfo.video_layer_mode) {
             status = VRS_BAD_OPERATION;
@@ -456,6 +473,9 @@ gboolean HandleVvlcRequest (int fd)
             status = VRS_INV_REQUEST;
         }
         else if (!VvlCapturePhoto (path)) {
+            status = VRS_OPERATION_FAILED;
+        }
+        else if (!VvlFreezeCamera ()) {
             status = VRS_OPERATION_FAILED;
         }
         break;

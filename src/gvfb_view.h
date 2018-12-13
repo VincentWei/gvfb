@@ -170,6 +170,8 @@ gboolean VvlOpenMotionJPEG (const char* path);
 gboolean VvlOpenCamera (const char* path, int zoom_level);
 gboolean VvlCloseCamera (void);
 gboolean VvlSetZoomLevel (int level);
+gboolean VvlFreezeCamera (void);
+gboolean VvlUnfreezeCamera (void);
 
 /* Return vido length in seconds */
 unsigned int VvlPlayVideo (const char* path, int idx_frame);

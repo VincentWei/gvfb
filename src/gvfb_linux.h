@@ -138,6 +138,8 @@ int Recv (int s, unsigned char *buf, int len, unsigned int flags);
 #define VRT_OPEN_CAMERA         21
 #define VRT_CLOSE_CAMERA        22
 #define VRT_SET_ZOOM_LEVEL      23
+#define VRT_FREEZE_CAMERA       24
+#define VRT_UNFREEZE_CAMERA     25
 
 #define VRT_PLAY_VIDEO          31
 #define VRT_SEEK_VIDEO          32
