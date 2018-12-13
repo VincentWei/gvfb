@@ -74,7 +74,7 @@ struct _vvlc_data_header {
     unsigned int    type;
     unsigned int    param1;
     unsigned int    param2;
-    size_t          payload_len;
+    unsigned int    payload_len;
     char            payload[0];
 };
 
@@ -198,8 +198,9 @@ static void write_request (int fd, const struct _vvlc_data_header* request,
 {
     ssize_t n;
 
-    printf ("request type (%d), request len: %d, payload length (%lu), payload (%s).\n",
-        request->type, request_len, request->payload_len, request->payload);
+    printf ("request type (%d), request len: %d, payload length (%u), payload (%s).\n",
+        request->type, request_len, request->payload_len,
+        (request->payload_len > 0) ? request->payload: "NULL");
 
     n = write (fd, request, request_len);
     if (n != request_len) {

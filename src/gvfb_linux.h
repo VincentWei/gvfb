@@ -153,7 +153,7 @@ struct _vvlc_data_header {
     unsigned int    type;
     unsigned int    param1;
     unsigned int    param2;
-    size_t          payload_len;
+    unsigned int    payload_len;
     char            payload[0];
 };
 
