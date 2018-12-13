@@ -410,7 +410,7 @@ gboolean HandleVvlcRequest (int fd)
         break;
 
     case VRT_UNFREEZE_CAMERA:
-        if ((gvfbruninfo.video_layer_mode & 0xFFFF) != 0x0103) {
+        if ((gvfbruninfo.video_layer_mode & 0xFFFF) != 0x0102) {
             status = VRS_BAD_OPERATION;
         }
         else if (!VvlUnfreezeCamera ()) {
