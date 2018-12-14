@@ -19,6 +19,8 @@
 ** along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#undef DEBUG
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -352,7 +354,7 @@ gboolean HandleVvlcRequest (int fd)
         return FALSE;
     }
 
-    msg_out (LEVEL_0, "got a request (%d) with param1 (%d), param2 (%d), payload_len (%lu)",
+    msg_out (LEVEL_0, "got a request (%d) with param1 (%d), param2 (%d), payload_len (%d)",
             header.type, header.param1, header.param2, header.payload_len);
 
     if (header.payload_len > 0) {

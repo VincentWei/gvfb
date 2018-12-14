@@ -19,6 +19,8 @@
 ** along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#undef DEBUG
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -856,9 +858,7 @@ void *CheckEventThread (void *args)
 #endif /* !WIN32 */
 
             msg_out (LEVEL_0, "Failed to select.");
-
             err_flag = 1;
-
             break;
         }
         else if (ret == 0) {
@@ -908,10 +908,8 @@ void *CheckEventThread (void *args)
         if (ret != sizeof (type)) {
             if (ret < 0) {
                 msg_out (LEVEL_0, "recv type error.");
-
                 err_flag = 1;
             }
-
             runinfo->running = FALSE;
             break;
         }
@@ -1313,8 +1311,7 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                         gvfbruninfo.pixel_data[index + i + k] = pixel_data;
                         gvfbruninfo.pixel_data[index + i + k + 1] = pixel_data;
                         gvfbruninfo.pixel_data[index + i + k + 2] = pixel_data;
-                        gvfbruninfo.pixel_data[index + i + k + 3] =
-                            (unsigned char)gvfbruninfo.graph_alpha_channel;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp <<= 1;
                     }   /* end for */
@@ -1335,8 +1332,7 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                         gvfbruninfo.pixel_data[index + i + k] = pixel_data;
                         gvfbruninfo.pixel_data[index + i + k + 1] = pixel_data;
                         gvfbruninfo.pixel_data[index + i + k + 2] = pixel_data;
-                        gvfbruninfo.pixel_data[index + i + k + 3] =
-                            (unsigned char)gvfbruninfo.graph_alpha_channel;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp >>= 1;
                     }   /* end for */
@@ -1381,8 +1377,7 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                             (pixel_data >> 8) & 0xff;
                         gvfbruninfo.pixel_data[index + i + k + 2] =
                             pixel_data & 0xff;
-                        gvfbruninfo.pixel_data[index + i + k + 3] =
-                            (unsigned char)gvfbruninfo.graph_alpha_channel;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp <<= 2;
                     }
@@ -1406,8 +1401,7 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                             (pixel_data >> 8) & 0xff;
                         gvfbruninfo.pixel_data[index + i + k + 2] =
                             pixel_data & 0xff;
-                        gvfbruninfo.pixel_data[index + i + k + 3] =
-                            (unsigned char)gvfbruninfo.graph_alpha_channel;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp >>= 2;
                     }   /* end for */
@@ -1452,8 +1446,7 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                             (pixel_data >> 8) & 0xff;
                         gvfbruninfo.pixel_data[index + i + k + 2] =
                             pixel_data & 0xff;
-                        gvfbruninfo.pixel_data[index + i + k + 3] =
-                                (unsigned char)gvfbruninfo.graph_alpha_channel;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp <<= 4;
                     }
@@ -1477,8 +1470,7 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                             (pixel_data >> 8) & 0xff;
                         gvfbruninfo.pixel_data[index + i + k + 2] =
                             pixel_data & 0xff;
-                        gvfbruninfo.pixel_data[index + i + k + 3] =
-                                (unsigned char)gvfbruninfo.graph_alpha_channel;
+                        gvfbruninfo.pixel_data[index + i + k + 3] = 0xff;
 
                         temp >>= 4;
                     }
@@ -1504,7 +1496,7 @@ static void get_pixbuf_data (int x, int y, int width, int height)
                 gvfbruninfo.pixel_data[index + i] = (pixel_data >> 16) & 0xff;
                 gvfbruninfo.pixel_data[index + i + 1] = (pixel_data >> 8) & 0xff;
                 gvfbruninfo.pixel_data[index + i + 2] = pixel_data & 0xff;
-                gvfbruninfo.pixel_data[index + i + 3] = gvfbruninfo.graph_alpha_channel;
+                gvfbruninfo.pixel_data[index + i + 3] = 0xff;
             }
 
             start_at += hdr->pitch;
@@ -1523,15 +1515,8 @@ static void get_pixbuf_data (int x, int y, int width, int height)
 
                 for (k = 0; k < 4; k++) {
                     temp = (pixel_data & s_mask[k]) >> s_shift[k];
-                    if (k == 3) {
-                        int alpha = s_color_map_table[k][temp];
-                        alpha = alpha * gvfbruninfo.graph_alpha_channel / 255;
-                        gvfbruninfo.pixel_data[index + i + k] = (unsigned char)alpha;
-                    }
-                    else {
-                        gvfbruninfo.pixel_data[index + i + k] =
-                            (unsigned char) (s_color_map_table[k][temp]);
-                    }
+                    gvfbruninfo.pixel_data[index + i + k] =
+                        (unsigned char) (s_color_map_table[k][temp]);
                 }
             }
 
@@ -1557,15 +1542,8 @@ static void get_pixbuf_data (int x, int y, int width, int height)
 
                 for (k = 0; k < 4; k++) {
                     temp = (pixel_data & s_mask[k]) >> s_shift[k];
-                    if (k == 3) {
-                        int alpha = s_color_map_table[k][temp];
-                        alpha = alpha * gvfbruninfo.graph_alpha_channel / 255;
-                        gvfbruninfo.pixel_data[index + i + k] = (unsigned char)alpha;
-                    }
-                    else {
-                        gvfbruninfo.pixel_data[index + i + k] =
-                            (unsigned char) (s_color_map_table[k][temp]);
-                    }
+                    gvfbruninfo.pixel_data[index + i + k] =
+                        (unsigned char) (s_color_map_table[k][temp]);
                 }
             }
 

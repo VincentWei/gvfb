@@ -19,6 +19,8 @@
 ** along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#undef DEBUG
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,8 +41,6 @@
 #include "gvfb_input.h"
 #include "gvfb_view.h"
 #include "gvfb_log.h"
-
-#undef DEBUG
 
 /* local function */
 static void on_im_commit_cb (GtkIMContext * context, const gchar * str);
@@ -1379,6 +1379,13 @@ void DrawImage (int x, int y, int width, int height)
         }
         else if (gvfbruninfo.motion_jpeg_info
                     && gvfbruninfo.motion_jpeg_stream) {
+
+            /* erase background first */
+            cairo_set_source_rgb (cr, 0.0f, 0.0f, 0.0f);
+            cairo_rectangle (cr, 0, 0,
+                    gvfbruninfo.actual_w, gvfbruninfo.actual_h);
+            cairo_fill (cr);
+
             /* draw video frame */
             GdkPixbuf *frame_pixbuf;
 
@@ -1458,7 +1465,7 @@ void DrawImage (int x, int y, int width, int height)
         /* draw graphics */
         cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
         gdk_cairo_set_source_pixbuf (cr, gvfbruninfo.pixbuf_r, 0, 0);
-        cairo_paint (cr);
+        cairo_paint_with_alpha (cr, gvfbruninfo.graph_alpha_channel / 255.0f);
 
         cairo_destroy (cr);
     }
