@@ -1456,8 +1456,9 @@ void DrawImage (int x, int y, int width, int height)
                     gvfbruninfo.zoom_percent / 100.0f);
 
         /* draw graphics */
+        cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
         gdk_cairo_set_source_pixbuf (cr, gvfbruninfo.pixbuf_r, 0, 0);
-        cairo_paint_with_alpha (cr, gvfbruninfo.graph_alpha_channel/255.0f);
+        cairo_paint (cr);
 
         cairo_destroy (cr);
     }
