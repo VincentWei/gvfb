@@ -194,7 +194,7 @@ typedef struct _GVFBRUNINFO {
      * 0x0000 for off (grid background)
      * 0x01xx for camera,
      *      the lower byte is the current status,
-     *      0 for idle, 1 for recording,  2 for frozen.
+     *      0 for idle, 1 for recording,  2 for frozen, 3 for recording paused.
      * 0x02xx for video playback;
      *      the lower byte is the current status,
      *      0 for stopped, 1 for playing, 2 for paused, 3 for end.

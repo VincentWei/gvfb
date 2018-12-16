@@ -357,7 +357,11 @@ gboolean HandleVvlcRequest (int fd)
     msg_out (LEVEL_0, "got a request (%d) with param1 (%d), param2 (%d), payload_len (%d)",
             header.type, header.param1, header.param2, header.payload_len);
 
-    if (header.payload_len > 0) {
+    if (header.payload_len > PATH_MAX) {
+        status = VRS_INV_REQUEST;
+        goto error;
+    }
+    else if (header.payload_len > 0) {
         n = read (fd, path, header.payload_len);
         if (n < header.payload_len) {
             status = VRS_INV_REQUEST;
@@ -368,6 +372,10 @@ gboolean HandleVvlcRequest (int fd)
     Lock ();
 
     switch (header.type) {
+    case VRT_GET_STATUS:
+        status = gvfbruninfo.video_layer_mode;
+        break;
+
     case VRT_SET_GRAPH_ALPHA:
         gvfbruninfo.graph_alpha_channel = (int)header.param1;
         break;
@@ -499,6 +507,24 @@ gboolean HandleVvlcRequest (int fd)
             status = VRS_BAD_OPERATION;
         }
         else if (!VvlStopRecord ()) {
+            status = VRS_OPERATION_FAILED;
+        }
+        break;
+
+    case VRT_PAUSE_RECORD:
+        if ((gvfbruninfo.video_layer_mode & 0xFFFF) != 0x0101) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (!VvlPauseRecord ()) {
+            status = VRS_OPERATION_FAILED;
+        }
+        break;
+
+    case VRT_RESUME_RECORD:
+        if ((gvfbruninfo.video_layer_mode & 0xFFFF) != 0x0103) {
+            status = VRS_BAD_OPERATION;
+        }
+        else if (!VvlResumeRecord ()) {
             status = VRS_OPERATION_FAILED;
         }
         break;

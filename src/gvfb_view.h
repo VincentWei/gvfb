@@ -186,5 +186,8 @@ gboolean VvlCapturePhoto (const char* path);
 gboolean VvlStartRecord (const char* path);
 gboolean VvlStopRecord (void);
 
+gboolean VvlPauseRecord (void);
+gboolean VvlResumeRecord (void);
+
 #endif /* end of _GVFB_VIEW_H_ */
 

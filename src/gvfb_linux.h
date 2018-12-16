@@ -132,6 +132,23 @@ int Recv (int s, unsigned char *buf, int len, unsigned int flags);
     #define VRS_BAD_OPERATION       2
     #define VRS_OPERATION_FAILED    3
     #define VRS_OPERATION_FINISHED  4
+    #define VRS_MAX                 VRS_OPERATION_FINISHED
+
+/*
+ * video layer status:
+ * 0x0000 for off (grid background)
+ * 0x01xx for camera status,
+ *      0 (0x0100) for idle,
+ *      1 (0x0101) for recording video,
+ *      2 (0x0102) for camera frozen,
+ *      3 (0x0103) for recording paused.
+ * 0x02xx for video playback status,
+ *      0 (0x0200) for stopped,
+ *      1 (0x0201) for playing,
+ *      2 (0x0202) for paused,
+ *      3 (0x0203) for playback end.
+ */
+#define VRT_GET_STATUS          2
 
 #define VRT_SET_GRAPH_ALPHA     11
 
@@ -150,6 +167,8 @@ int Recv (int s, unsigned char *buf, int len, unsigned int flags);
 #define VRT_CAPTURE_PHOTO       41
 #define VRT_START_RECORD        42
 #define VRT_STOP_RECORD         43
+#define VRT_PAUSE_RECORD        44
+#define VRT_RESUME_RECORD       45
 
 struct _vvlc_data_header {
     unsigned int    type;

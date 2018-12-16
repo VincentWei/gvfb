@@ -1351,6 +1351,32 @@ gboolean VvlStopRecord (void)
     return TRUE;
 }
 
+gboolean VvlPauseRecord (void)
+{
+    if (gvfbruninfo.motion_jpeg_stream == NULL
+            || gvfbruninfo.motion_jpeg_info == NULL
+            || gvfbruninfo.video_record_stream == NULL
+            || gvfbruninfo.video_layer_mode != 0x0101) {
+        return FALSE;
+    }
+
+    gvfbruninfo.video_layer_mode = 0x0103;
+    return TRUE;
+}
+
+gboolean VvlResumeRecord (void)
+{
+    if (gvfbruninfo.motion_jpeg_stream == NULL
+            || gvfbruninfo.motion_jpeg_info == NULL
+            || gvfbruninfo.video_record_stream == NULL
+            || gvfbruninfo.video_layer_mode != 0x0103) {
+        return FALSE;
+    }
+
+    gvfbruninfo.video_layer_mode = 0x0101;
+    return TRUE;
+}
+
 void DrawImage (int x, int y, int width, int height)
 {
     if (gvfbruninfo.graph_with_alpha) {
@@ -1437,8 +1463,7 @@ void DrawImage (int x, int y, int width, int height)
                 g_object_unref (frame_pixbuf);
             }
 
-            if ((gvfbruninfo.video_layer_mode & 0xFFFF) == 0x0100 ||
-                    (gvfbruninfo.video_layer_mode & 0xFFFF) == 0x0101) {
+            if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0100) {
                 gvfbruninfo.video_frame_idx++;
                 if (gvfbruninfo.video_frame_idx
                         > gvfbruninfo.motion_jpeg_info->nr_frames) {
