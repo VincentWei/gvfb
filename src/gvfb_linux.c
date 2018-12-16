@@ -346,9 +346,6 @@ gboolean HandleVvlcRequest (int fd)
     char path [PATH_MAX];
 
     n = read (fd, &header, sizeof (header));
-    if (n == 0)
-        return TRUE;
-
     if (n < sizeof (header)) {
         msg_out (LEVEL_0, "Failed to read from vvlc socket");
         return FALSE;
@@ -546,7 +543,6 @@ error:
     n = write (fd, &header, sizeof (header));
     if (n != sizeof (header)) {
         msg_out (LEVEL_0, "Error when writting UNIX socket.");
-        UnLock ();
         return FALSE;
     }
 

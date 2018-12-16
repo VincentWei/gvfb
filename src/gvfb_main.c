@@ -774,7 +774,7 @@ void *CheckEventThread (void *args)
 
     GThread *drawthread = NULL;
 
-    fd_set fds;
+    fd_set rfds, efds;
 
     int type, size, temp;
     /* mouse position */
@@ -820,8 +820,10 @@ void *CheckEventThread (void *args)
     while (runinfo->running) {
         int maxfd = runinfo->sockfd;
 
-        FD_ZERO (&fds);
-        FD_SET (runinfo->sockfd, &fds);
+        FD_ZERO (&rfds);
+        FD_SET (runinfo->sockfd, &rfds);
+        FD_ZERO (&efds);
+        FD_SET (runinfo->sockfd, &efds);
 
 #ifndef WIN32
         if (runinfo->vvlc_sockfd >= 0) {
@@ -832,13 +834,13 @@ void *CheckEventThread (void *args)
         }
 
         if (runinfo->vvls_sockfd >= 0) {
-            FD_SET (runinfo->vvls_sockfd, &fds);
+            FD_SET (runinfo->vvls_sockfd, &rfds);
             if (runinfo->vvls_sockfd > maxfd)
                 maxfd = runinfo->vvls_sockfd;
         }
 
         if (runinfo->vvlc_sockfd >= 0) {
-            FD_SET (runinfo->vvlc_sockfd, &fds);
+            FD_SET (runinfo->vvlc_sockfd, &rfds);
             if (runinfo->vvlc_sockfd > maxfd)
                 maxfd = runinfo->vvlc_sockfd;
         }
@@ -848,7 +850,7 @@ void *CheckEventThread (void *args)
         tv.tv_sec = 0;
         tv.tv_usec = 100 * 1000;
 
-        ret = select (maxfd + 1, &fds, NULL, NULL, &tv);
+        ret = select (maxfd + 1, &rfds, NULL, &efds, &tv);
 
         if (ret < 0) {
 #ifndef WIN32
@@ -867,7 +869,7 @@ void *CheckEventThread (void *args)
 
 #ifndef WIN32
         if (runinfo->vvls_sockfd >= 0 &&
-                FD_ISSET (runinfo->vvls_sockfd, &fds)) {
+                FD_ISSET (runinfo->vvls_sockfd, &rfds)) {
             struct sockaddr_un client_address;
             socklen_t client_len;
             int fd;
@@ -888,7 +890,7 @@ void *CheckEventThread (void *args)
             continue;
         }
         else if (runinfo->vvlc_sockfd >= 0 &&
-                FD_ISSET (runinfo->vvlc_sockfd, &fds)) {
+                FD_ISSET (runinfo->vvlc_sockfd, &rfds)) {
             if (!HandleVvlcRequest (runinfo->vvlc_sockfd)) {
                 close (runinfo->vvlc_sockfd);
                 runinfo->vvlc_sockfd = -1;
@@ -896,8 +898,12 @@ void *CheckEventThread (void *args)
 
             continue;
         }
-        else if (!FD_ISSET (runinfo->sockfd, &fds)) {
+        else if (!FD_ISSET (runinfo->sockfd, &rfds)) {
             continue;
+        }
+        else if (FD_ISSET (runinfo->sockfd, &efds)) {
+            runinfo->running = FALSE;
+            break;
         }
 #endif /* !WIN32 */
 

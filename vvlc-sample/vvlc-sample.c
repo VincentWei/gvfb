@@ -87,7 +87,7 @@
 #define VRT_PAUSE_RECORD        44
 #define VRT_RESUME_RECORD       45
 
-#define VRT_MAX                 VRT_STOP_RECORD
+#define VRT_MAX                 VRT_RESUME_RECORD
 
 struct _vvlc_data_header {
     unsigned int    type;
@@ -189,10 +189,6 @@ static int handle_response (int fd)
     struct _vvlc_data_header response;
 
     n = read (fd, &response, sizeof (struct _vvlc_data_header));
-    if (n == 0) {
-        return 0;
-    }
-
     if (n < sizeof (struct _vvlc_data_header)) {
         printf ("Error when reading UNIX socket (%lu to read, %ld got).\n",
                 sizeof (struct _vvlc_data_header), n);
@@ -201,10 +197,17 @@ static int handle_response (int fd)
     }
 
     if (response.type != VRT_RESPONSE
-            || response.param1 > VRT_MAX
-            || response.param2 > VRS_MAX) {
+            || response.param1 > VRT_MAX) {
         printf ("Wrong response packet (type: %d, operation: %d, status: %d).\n",
                 response.type, response.param1, response.param2);
+    }
+    else if (response.param1 == VRT_PLAY_VIDEO) {
+        printf ("Response for playing video request: video time: %ds.\n",
+                response.param2);
+    }
+    else if (response.param1 == VRT_GET_STATUS) {
+        printf ("Response for getting status: current status: 0x%04x.\n",
+                response.param2);
     }
     else {
         printf ("Response from VVLS (Operation: %s; Status: %s).\n",
@@ -379,6 +382,28 @@ static void resume_video_playback (int fd)
     write_request (fd, &packet, sizeof (struct _vvlc_data_header));
 }
 
+static void pause_video_record (int fd)
+{
+    struct _vvlc_data_header packet;
+
+    packet.type = VRT_PAUSE_RECORD;
+    packet.param1 = 0;
+    packet.param2 = 0;
+    packet.payload_len = 0;
+    write_request (fd, &packet, sizeof (struct _vvlc_data_header));
+}
+
+static void resume_video_record (int fd)
+{
+    struct _vvlc_data_header packet;
+
+    packet.type = VRT_RESUME_RECORD;
+    packet.param1 = 0;
+    packet.param2 = 0;
+    packet.payload_len = 0;
+    write_request (fd, &packet, sizeof (struct _vvlc_data_header));
+}
+
 static void stop_video_playback (int fd)
 {
     struct _vvlc_data_header packet;
@@ -396,6 +421,17 @@ static void zoom_camera (int fd, int zoom_level)
 
     packet.type = VRT_SET_ZOOM_LEVEL;
     packet.param1 = zoom_level;
+    packet.param2 = 0;
+    packet.payload_len = 0;
+    write_request (fd, &packet, sizeof (struct _vvlc_data_header));
+}
+
+static void get_status (int fd)
+{
+    struct _vvlc_data_header packet;
+
+    packet.type = VRT_GET_STATUS;
+    packet.param1 = 0;
     packet.param2 = 0;
     packet.payload_len = 0;
     write_request (fd, &packet, sizeof (struct _vvlc_data_header));
@@ -420,7 +456,7 @@ int main (int argc, const char* argv[])
         FD_ZERO (&fds);
         FD_SET (fd, &fds);
 
-        /* 5s */
+        /* 0.5s */
         tv.tv_sec = 0;
         tv.tv_usec = 500 * 1000;
         ret = select (fd + 1, &fds, NULL, NULL, &tv);
@@ -448,6 +484,9 @@ int main (int argc, const char* argv[])
         printf ("\t9) Stop video playback.\n");
         printf ("\t10) Zoom in camera.\n");
         printf ("\t11) Zoom out camera.\n");
+        printf ("\t12) Pause video record.\n");
+        printf ("\t13) Resume video record.\n");
+        printf ("\t20) Get status.\n");
 
         scanf ("%d", &cmd);
 
@@ -509,7 +548,21 @@ int main (int argc, const char* argv[])
             zoom_level -= 0x10;
             zoom_camera (fd, zoom_level);
             break;
+
+        case 12:
+            pause_video_record (fd);
+            break;
+
+        case 13:
+            resume_video_record (fd);
+            break;
+
+        case 20:
+            get_status (fd);
+            break;
         }
+
+        handle_response (fd);
     }
 
     return 0;
