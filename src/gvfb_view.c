@@ -1463,7 +1463,8 @@ void DrawImage (int x, int y, int width, int height)
                 g_object_unref (frame_pixbuf);
             }
 
-            if ((gvfbruninfo.video_layer_mode & 0xFF00) == 0x0100) {
+            if ((gvfbruninfo.video_layer_mode & 0xFFFF) == 0x0100 ||
+                    (gvfbruninfo.video_layer_mode & 0xFFFF) == 0x0101) {
                 gvfbruninfo.video_frame_idx++;
                 if (gvfbruninfo.video_frame_idx
                         > gvfbruninfo.motion_jpeg_info->nr_frames) {
