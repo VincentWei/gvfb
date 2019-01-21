@@ -155,6 +155,9 @@ void InitRunInfo ()
     /* default is not zoom */
     gvfbruninfo.zoom_percent = 100;
 
+    /* default is no rotation */
+    gvfbruninfo.rotation = 3;
+
     /* set screen size */
     gvfbruninfo.screen_w = 0;
     gvfbruninfo.screen_h = 0;

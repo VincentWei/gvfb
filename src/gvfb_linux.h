@@ -151,6 +151,7 @@ int Recv (int s, unsigned char *buf, int len, unsigned int flags);
 #define VRT_GET_STATUS          2
 
 #define VRT_SET_GRAPH_ALPHA     11
+#define VRT_SET_GRAPH_ROTATION  12
 
 #define VRT_OPEN_CAMERA         21
 #define VRT_CLOSE_CAMERA        22

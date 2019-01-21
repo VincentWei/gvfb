@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <assert.h>
 
 #ifdef WIN32
@@ -1166,6 +1167,22 @@ gboolean VvlStopPlayback (void)
     return TRUE;
 }
 
+gboolean VvlSetGraphAlpha (int alpha)
+{
+    gvfbruninfo.graph_alpha_channel = alpha;
+    return TRUE;
+}
+
+gboolean VvlSetGraphRotation (int right_angels)
+{
+    if (right_angels > 4 || right_angels < -4)
+        gvfbruninfo.rotation = right_angels % 4;
+    else
+        gvfbruninfo.rotation = right_angels;
+
+    return TRUE;
+}
+
 #define LEN_RW_BUFF  8192
 
 static gboolean record_current_frame (GFileOutputStream* output_stream, gboolean save_size)
@@ -1488,6 +1505,23 @@ void DrawImage (int x, int y, int width, int height)
                     gvfbruninfo.zoom_percent / 100.0f,
                     gvfbruninfo.zoom_percent / 100.0f);
 
+        switch (gvfbruninfo.rotation) {
+        case 1:
+            cairo_translate (cr, gvfbruninfo.actual_h, 0);
+            cairo_rotate (cr, gvfbruninfo.rotation * M_PI / 2);
+            break;
+        case 2:
+            cairo_translate (cr, gvfbruninfo.actual_w, gvfbruninfo.actual_h);
+            cairo_rotate (cr, gvfbruninfo.rotation * M_PI / 2);
+            break;
+        case 3:
+            cairo_translate (cr, 0, gvfbruninfo.actual_w);
+            cairo_rotate (cr, gvfbruninfo.rotation * M_PI / 2);
+            break;
+        default:
+            break;
+        }
+
         /* draw graphics */
         cairo_set_operator (cr, CAIRO_OPERATOR_OVER);
         gdk_cairo_set_source_pixbuf (cr, gvfbruninfo.pixbuf_r, 0, 0);
@@ -1497,10 +1531,28 @@ void DrawImage (int x, int y, int width, int height)
     }
     else {
         cairo_t *cr;
+        int right_angles = (gvfbruninfo.rotation % 360)/90;
 
         cr = gdk_cairo_create (gvfbruninfo.draw_area->window);
 
         /* draw graphics */
+        switch (gvfbruninfo.rotation) {
+        case 1:
+            cairo_translate (cr, gvfbruninfo.actual_h, 0);
+            cairo_rotate (cr, gvfbruninfo.rotation * M_PI / 2);
+            break;
+        case 2:
+            cairo_translate (cr, gvfbruninfo.actual_w, gvfbruninfo.actual_h);
+            cairo_rotate (cr, gvfbruninfo.rotation * M_PI / 2);
+            break;
+        case 3:
+            cairo_translate (cr, 0, gvfbruninfo.actual_w);
+            cairo_rotate (cr, gvfbruninfo.rotation * M_PI / 2);
+            break;
+        default:
+            break;
+        }
+
         if (gvfbruninfo.zoom_percent != 100)
             cairo_scale (cr,
                     gvfbruninfo.zoom_percent / 100.0f,

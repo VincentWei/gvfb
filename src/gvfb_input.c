@@ -172,6 +172,7 @@ void InitCodeMap (void)
 /* send mouse data  */
 void SendMouseData (int x, int y, int buttons)
 {
+    int maxx, maxy, tmp;
     GVFBEventData event;
     GVFBHeader *hdr;
 
@@ -179,11 +180,38 @@ void SendMouseData (int x, int y, int buttons)
     hdr = gvfbruninfo.hdr;
 
     /* fix position */
+    maxx = max (x, hdr->width);
+    maxy = max (y, hdr->height);
+
+    switch (gvfbruninfo.rotation) {
+    case 1:
+        x = gvfbruninfo.actual_h - x;
+        tmp = y;
+        y = x;
+        x = tmp;
+        maxx = maxy;
+        maxy = maxx;
+        break;
+    case 2:
+        x = gvfbruninfo.actual_w - x;
+        y = gvfbruninfo.actual_h - y;
+        break;
+    case 3:
+        y = gvfbruninfo.actual_w - y;
+        tmp = y;
+        y = x;
+        x = tmp;
+        maxx = maxy;
+        maxy = maxx;
+        break;
+    default:
+        break;
+    }
+
     x = max (x, 0);
     y = max (y, 0);
-
-    x = min (x, hdr->width);
-    y = min (y, hdr->height);
+    x = min (x, maxx);
+    y = min (y, maxy);
 
     event.event_type = MOUSE_TYPE;
     event.data.mouse.x = x;

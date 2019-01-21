@@ -165,6 +165,9 @@ gboolean FitScnRect (int width, int height, int fit_flag);
  */
 void SetMouseXY (int x, int y);
 
+gboolean VvlSetGraphAlpha (int alpha);
+gboolean VvlSetGraphRotation (int angel);
+
 gboolean VvlOpenMotionJPEG (const char* path);
 
 gboolean VvlOpenCamera (const char* path, int zoom_level);

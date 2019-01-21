@@ -68,6 +68,7 @@
 #define VRT_GET_STATUS          2
 
 #define VRT_SET_GRAPH_ALPHA     11
+#define VRT_SET_GRAPH_ROTATION  12
 
 #define VRT_OPEN_CAMERA         21
 #define VRT_CLOSE_CAMERA        22
@@ -139,7 +140,7 @@ static const char* operation_name [] = {
     "VRT_UNKNOWN(9)",        //      9
     "VRT_UNKNOWN(10)",       //      10
     "VRT_SET_GRAPH_ALPHA",   //      11
-    "VRT_UNKNOWN(12)",       //      12
+    "VRT_SET_GRAPH_ROTATION",//      12
     "VRT_UNKNOWN(13)",       //      13
     "VRT_UNKNOWN(14)",       //      14
     "VRT_UNKNOWN(15)",       //      15
@@ -282,6 +283,17 @@ static void set_graph_alpha (int fd, int alpha)
 
     packet.type = VRT_SET_GRAPH_ALPHA;
     packet.param1 = alpha;
+    packet.param2 = 0;
+    packet.payload_len = 0;
+    write_request (fd, &packet, sizeof (struct _vvlc_data_header));
+}
+
+static void set_graph_rotation (int fd, int rotation)
+{
+    struct _vvlc_data_header packet;
+
+    packet.type = VRT_SET_GRAPH_ROTATION;
+    packet.param1 = rotation;
     packet.param2 = 0;
     packet.payload_len = 0;
     write_request (fd, &packet, sizeof (struct _vvlc_data_header));
@@ -486,6 +498,8 @@ int main (int argc, const char* argv[])
         printf ("\t11) Zoom out camera.\n");
         printf ("\t12) Pause video record.\n");
         printf ("\t13) Resume video record.\n");
+        printf ("\t14) Rotates graphics 90° clockwise.\n");
+        printf ("\t15) Reset graphics (rotation and alpha).\n");
         printf ("\t20) Get status.\n");
 
         scanf ("%d", &cmd);
@@ -555,6 +569,15 @@ int main (int argc, const char* argv[])
 
         case 13:
             resume_video_record (fd);
+            break;
+
+        case 14:
+            set_graph_rotation (fd, 1);
+            break;
+
+        case 15:
+            set_graph_rotation (fd, 0);
+            set_graph_alpha (fd, 255);
             break;
 
         case 20:

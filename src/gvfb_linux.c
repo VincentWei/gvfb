@@ -374,7 +374,16 @@ gboolean HandleVvlcRequest (int fd)
         break;
 
     case VRT_SET_GRAPH_ALPHA:
+        if (!VvlSetGraphAlpha ((int)header.param1)) {
+            status = VRS_OPERATION_FAILED;
+        }
         gvfbruninfo.graph_alpha_channel = (int)header.param1;
+        break;
+
+    case VRT_SET_GRAPH_ROTATION:
+        if (!VvlSetGraphRotation ((int)header.param1)) {
+            status = VRS_OPERATION_FAILED;
+        }
         break;
 
     case VRT_OPEN_CAMERA:

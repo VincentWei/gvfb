@@ -224,6 +224,9 @@ typedef struct _GVFBRUNINFO {
     GFileOutputStream *video_record_stream;
     guint32 nr_frames_recorded;
 
+    /* the rotation angel (degree) of graphics layer */
+    int rotation;
+
     int refresh_rate;
 
     /* screen size */
