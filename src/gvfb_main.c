@@ -685,7 +685,9 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
         }
 
         /* F11 for full screen */
-        if (gvfbruninfo.o_fullscreen && (keycode == GDK_F11)) {
+        if (gvfbruninfo.o_fullscreen
+                && keycode == GDK_F11
+                && event->key.state & GDK_SHIFT_MASK) {
             FullScreen ();
         }
 
