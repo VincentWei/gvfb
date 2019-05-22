@@ -33,13 +33,11 @@
 #   include <windows.h>
 #endif
 
-#ifndef PATH_MAX
-#   define PATH_MAX MAX_PATH
-#endif
+#define MAX_MSG     5120
 
 #define msgcat(_msg,...)                 \
     do {                                 \
-        char _msg_ [PATH_MAX];           \
+        char _msg_ [MAX_MSG];           \
         sprintf (_msg_, __VA_ARGS__);    \
         strcat (_msg, _msg_);            \
     }                                    \
@@ -47,7 +45,7 @@
 
 extern GtkWidget *msg_dialog;
 extern int  has_err;
-extern char err_msg [PATH_MAX];
+extern char err_msg [MAX_MSG];
 
 #endif /* _GVFB_ERRMSG_H_ */
 

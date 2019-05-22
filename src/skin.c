@@ -363,7 +363,9 @@ static gboolean mouse_button_down (GtkWidget * widget, GdkEventButton * event,
         SKINPOINT point = { (int) event->x, (int) event->y };
         SKINKEYITEM *item = SkinPointToSkinItem (gvfbskin->pskin, &point);
 
-        if (item) {     /* at item */
+        if (item && item != gvfbskin->pressed_item) {     /* at item */
+
+            msg_log("%s: sending keyboard data: %d, pressed\n", __FUNCTION__, item->keycode);
             SendKeyboardData (item->keycode, 1, 0);
 
             item->state = SKIN_BUTTON_DOWN;
@@ -393,6 +395,7 @@ static gboolean mouse_button_up (GtkWidget * widget, GdkEventButton * event,
         assert (item->region != NULL);
 
         if (item) {     /* at item */
+            msg_log("%s: sending keyboard data: %d, released\n", __FUNCTION__, item->keycode);
             SendKeyboardData (item->keycode, 0, 0);
 
             item->state = SKIN_BUTTON_UP;
@@ -419,6 +422,7 @@ static gboolean mouse_move (GtkWidget * widget, GdkEventButton * event,
         return TRUE;
     }
 
+    msg_log("%s: sending keyboard data: %d, released\n", __FUNCTION__, lastitem->keycode);
     SendKeyboardData (lastitem->keycode, 0, 0);
 
     lastitem->state = SKIN_BUTTON_UP;

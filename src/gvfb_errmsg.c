@@ -29,7 +29,31 @@
 #include <glib.h>
 
 #include "gvfb_errmsg.h"
+#include "gvfb_log.h"
 
 GtkWidget *msg_dialog;
 int has_err = FALSE;
-char err_msg[PATH_MAX] = { '\0' };
+char err_msg[MAX_MSG] = { '\0' };
+
+#ifdef DEBUG
+
+#define LOGFILE "/var/tmp/gvfb.log"
+
+static FILE* log_fp;
+
+void msg_log(const char* fmt, ...)
+{
+    if (log_fp == NULL) {
+        log_fp = fopen (LOGFILE, "a");
+    }
+
+    if (log_fp) {
+        va_list ap;
+        va_start(ap, fmt);
+        vfprintf(log_fp, fmt, ap);
+        va_end(ap);
+    }
+}
+
+#endif /* DEBUG */
+
