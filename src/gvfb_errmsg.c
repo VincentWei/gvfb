@@ -52,6 +52,7 @@ void msg_log(const char* fmt, ...)
         va_start(ap, fmt);
         vfprintf(log_fp, fmt, ap);
         va_end(ap);
+        fflush(log_fp);
     }
 }
 

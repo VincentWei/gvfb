@@ -17,7 +17,7 @@ SET(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Universal Virtual Frame Buffer on Gtk+ 2.0")
 SET(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-1.2.2")
 SET(CPACK_SOURCE_GENERATOR "TGZ")
-set(CPACK_SOURCE_IGNORE_FILES
+SET(CPACK_SOURCE_IGNORE_FILES
       "/auto/;/cmake/;/.svn/;/.git/;/.bzr/;/CMakeFiles/;/_CPack_Packages/;CMakeCache.txt$;
       ~$;.swp$;.cmake$;
       ${CPACK_SOURCE_IGNORE_FILES}")

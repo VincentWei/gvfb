@@ -1058,7 +1058,7 @@ gboolean VvlOpenMotionJPEG (const char* file_name)
     }
 
 error:
-    msg_out (LEVEL_0, "VvlOpenMotionJPEG failed");
+    msg_log("%s: failed to read file: %s\n", __FUNCTION__, file_name);
     g_object_unref (file);
     cleanup_motion_jpeg ();
     return FALSE;
@@ -1066,6 +1066,8 @@ error:
 
 gboolean VvlOpenCamera (const char* path, int zoom_level)
 {
+    msg_log("%s: path (%s), zoom_level (%d)\n", __FUNCTION__, path, zoom_level);
+
     if (VvlOpenMotionJPEG (path)) {
         if (zoom_level > 255)
             gvfbruninfo.camera_zoom_level = 0x30;

@@ -484,6 +484,8 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
     gvfbruninfo.vvls_sockfd = -1;
     gvfbruninfo.vvlc_sockfd = -1;
 
+    msg_log ("%s: Initializing VVLSd: %s\n", __FUNCTION__, SOCKET_VVLS);
+
     {
         struct sockaddr_un server_address;
         gvfbruninfo.vvls_sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
@@ -499,21 +501,22 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
                 chmod (SOCKET_VVLS, 0666);
 
                 if (listen (gvfbruninfo.vvls_sockfd, 1) < 0) {
-                    msg_out (LEVEL_0, "Failed to listen to VVLS socket.");
+                    msg_log ("%s: Failed to listen to VVLS socket\n", __FUNCTION__);
                     close (gvfbruninfo.vvls_sockfd);
                     gvfbruninfo.vvls_sockfd = -1;
                 }
 
-                msg_out (LEVEL_0, "VVLS Listen at %d.", gvfbruninfo.vvls_sockfd);
+                msg_log ("%s: VVLS Listen at %d\n",
+                    __FUNCTION__, gvfbruninfo.vvls_sockfd);
             }
             else {
-                msg_out (LEVEL_0, "Failed to bind to VVLS socket.");
+                msg_log ("%s: Failed to bind to VVLS socket\n", __FUNCTION__);
                 close (gvfbruninfo.vvls_sockfd);
                 gvfbruninfo.vvls_sockfd = -1;
             }
         }
         else {
-            msg_out (LEVEL_0, "Failed to create VVLS socket.");
+            msg_log ("%s: Failed to create VVLS socket\n", __FUNCTION__);
         }
     }
 #endif /* !WIN32 */
