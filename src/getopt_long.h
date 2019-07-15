@@ -1,3 +1,15 @@
+///////////////////////////////////////////////////////////////////////////////
+//
+//                          IMPORTANT NOTICE
+//
+// The following open source license statement does not apply to any
+// entity in the Exception List published by FMSoft.
+//
+// For more information, please visit:
+//
+// https://www.fmsoft.cn/exception-list
+//
+//////////////////////////////////////////////////////////////////////////////
 /* Declarations for getopt.
    Copyright 1989, 1990, 1991, 1992, 1993, 1994, 1996, 1997, 1998, 2000
    Free Software Foundation, Inc.
