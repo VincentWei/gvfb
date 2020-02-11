@@ -67,7 +67,7 @@ typedef struct _GVFBRect{
 } GVFBRECT;
 
 typedef struct _GVFBHeader {
-    unsigned int info_size;    /* info size */
+    unsigned int data_size;    /* the size of the shared memory in bytes */
     int width;                 /* window width */
     int height;                /* window height */
     int depth;                 /* color depth */

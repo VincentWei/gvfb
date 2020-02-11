@@ -1,10 +1,16 @@
 # GVFB
 
-GVFB Version 1.2.2
+GVFB Version 1.2.4
 
 This is a virtual frame buffer program running on Gtk-2.0.
 
 This program (gvfb) is compliant to MiniGUI V3.0's XVFB specification.
+
+## Change Log
+
+### Version 1.2.4
+
+- Support for double buffering.
 
 ## Prerequisites
 
@@ -40,7 +46,7 @@ The following people had been involved in the development of GVFB:
 
 ## Copying
 
-Copyright (C) 2010 ~ 2019, Beijing FMSoft Technologies Co., Ltd.
+Copyright (C) 2010 ~ 2020, Beijing FMSoft Technologies Co., Ltd.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

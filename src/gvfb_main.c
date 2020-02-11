@@ -254,12 +254,13 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
     int len;
     int format_index;
     int s_bit[4];
-    int i, k, data_size;
+    int i, k;
+    unsigned int data_size;
     unsigned char t;
 
     int nr_entry = 0;
 
-    /* malloc Pixel buffer */
+    /* malloc pixel buffer */
     gvfbruninfo.pixel_data = (unsigned char *) malloc (width * height * 4);
 
     if (gvfbruninfo.pixel_data == NULL) {
@@ -281,13 +282,28 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
         pitch = ((width * depth + 31) / 32) * 4;
     }
 
-    /* Calculate the size of pixel data */
+    /* Calculate the size of pixel data.
+     *
+     * Since 1.2.4, we create double buffers for the clients.
+     * The client (e.g., MiniGUI) can use the double buffers to eliminate
+     * the mess screen due to the fast asynchronous update, and support
+     * the hardware cursor.
+     *
+     * When double buffers used, the value of the first field `data_size`
+     * in the header will be the size of the shared memory in bytes.
+     * This field is previously called `info_size`, which was initialized
+     * as 0 before 1.2.4, and ignored by the clients. Therefore, a new client
+     * which want to support double buffering can depend on the value of this
+     * field to check the availability of double buffers.
+     *
+     * GVFB always reads the pixels in the first buffer to show the contents
+     * in the window.
+     */
     data_size =
-        pitch * height + sizeof (GVFBHeader) + nr_entry * sizeof (GVFBPalEntry);
+        (pitch * height) * 2 + sizeof (GVFBHeader) + nr_entry * sizeof (GVFBPalEntry);
 
     /* init header */
     hdr = (GVFBHeader *) CreateShareMemory (ppid, data_size);
-
     if ((intptr_t) hdr == -1) {
         msg_out (LEVEL_0, "CreateShareMemory error.");
 
@@ -301,7 +317,7 @@ int Init (int ppid, int width, int height, int depth, const char *color_format)
     /* save gvfb header */
     gvfbruninfo.hdr = hdr;
 
-    hdr->info_size = 0;
+    hdr->data_size = data_size;
     hdr->width = width;
     hdr->height = height;
     hdr->depth = depth;
