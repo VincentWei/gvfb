@@ -1,4 +1,11 @@
 *******************************************************************************
+What's new in this version (1.2.4)
+03/31/2020 (VincentWei)
+	* ENHANCEMENT: Enable double bufferring.
+	* BUGFIXING: Use a button pressed flags to send button events.
+    The fore implementation gave bad result for multiple buttons pressed status.
+
+*******************************************************************************
 What's new in this version (1.2.2)
 12/15/2018 (VincentWei)
 	* ENHANCEMENT: Add Virtual Video Layer (VVL) to simulate camera and video playback.
