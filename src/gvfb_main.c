@@ -606,11 +606,15 @@ void UnInit ()
 }
 
 /* main event */
+#define LBUTTON_DOWN        1
+#define RBUTTON_DOWN        2
+#define MBUTTON_DOWN        4
+
 gboolean EventProc (GtkWidget * window, GdkEvent * event)
 {
     int x, y, button;
     unsigned int keycode;
-    static int button_press = 0;
+    static int pressed_buttons = 0;
 
     switch (event->type) {
     case GDK_BUTTON_PRESS:
@@ -626,20 +630,20 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
 
         if (button == 1) {
             /* left */
-            button_press = 1;
+            pressed_buttons |= LBUTTON_DOWN;
         }
         else if (button == 2) {
             /* middle */
-            button = 4;
+            pressed_buttons |= MBUTTON_DOWN;
         }
         else if (button == 3) {
             /* right */
-            button = 2;
+            pressed_buttons |= RBUTTON_DOWN;
         }
 
-        SendMouseData (x, y, button);
-
+        SendMouseData (x, y, pressed_buttons);
         break;
+
     case GDK_BUTTON_RELEASE:
         /* mouse button release */
 #ifdef DEBUG
@@ -653,14 +657,21 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
 
         if (button == 1) {
             /* the left mouse release */
-            button_press = 0;
+            pressed_buttons &= ~LBUTTON_DOWN;
         }
-
-        SendMouseData (x, y, 0);
-
+        else if (button == 2) {
+            /* middle */
+            pressed_buttons &= ~MBUTTON_DOWN;
+        }
+        else if (button == 3) {
+            /* right */
+            pressed_buttons &= ~RBUTTON_DOWN;
+        }
+        SendMouseData (x, y, pressed_buttons);
         break;
+
     case GDK_2BUTTON_PRESS:
-        /*  */
+#if 0   /* deprecated code: the client will treat the double clicks */
 #ifdef DEBUG
         printf ("catch GDK_2BUTTON_PRESS event\n");
 #endif
@@ -678,39 +689,19 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
             /* right */
             button = 2;
         }
-
         SendMouseData (x, y, button);
-
+#endif  /* deprecated code */
         break;
-    case GDK_MOTION_NOTIFY:
-        /* */
-#ifdef DEBUG
-        //printf ("catch GDK_MOTION_NOTIFY event\n");
-#endif
 
+    case GDK_MOTION_NOTIFY:
         x = (int) (event->button.x * 100 / gvfbruninfo.zoom_percent);
         y = (int) (event->button.y * 100 / gvfbruninfo.zoom_percent);
 
-        /* if press and hold down the left mouse */
-        if (button_press) {
-            /* left */
-            button = 1;
-        }
-        else {
-            /* none */
-            button = 0;
-        }
-
-        SendMouseData (x, y, button);
-
+        SendMouseData (x, y, pressed_buttons);
         break;
+
     case GDK_KEY_PRESS:
-#ifdef DEBUG
-        printf ("catch GDK_KEY_PRESS event\n");
-#endif
-
         keycode = event->key.keyval;
-
         if (is_keypad_data (keycode)) {
             IsKeypadData++;
         }
@@ -762,9 +753,7 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
 
         /* control key press */
         SetCtrlKey (keycode);
-
         SendKeyboardData (keycode, 1, 0);
-
         return TRUE;
         break;
 
@@ -772,11 +761,10 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
 #ifdef DEBUG
         printf ("catch GDK_KEY_RELEASE event\n");
 #endif
-
         SendKeyboardData (event->key.keyval, 0, 0);
-
         return TRUE;
         break;
+
     default:
         /* do nothing */
         break;
@@ -1316,10 +1304,6 @@ static void get_pixbuf_data (int x, int y, int width, int height)
         set_palette ();
         hdr->palette_changed = 0;
     }
-
-#ifdef DEBUG
-//    printf ("get_pixbuf_data : %d %d %d %d\n", x, y, width, height);
-#endif
 
     switch (hdr->depth) {
     case 1:
