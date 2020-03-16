@@ -1,6 +1,6 @@
 # GVFB
 
-GVFB Version 1.2.4
+GVFB Version 1.2.5
 
 This is a virtual frame buffer program running on Gtk-2.0.
 
@@ -8,9 +8,10 @@ This program (gvfb) is compliant to MiniGUI V3.0's XVFB specification.
 
 ## Change Log
 
-### Version 1.2.4
+### Version 1.2.5
 
 - Support for double buffering.
+- Support for command to quit.
 
 ## Prerequisites
 
