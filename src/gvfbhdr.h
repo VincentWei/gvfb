@@ -49,6 +49,10 @@
 #define SHOW_HIDE_TYPE   5
 #define GVFB_CLOSE_TYPE  6
 
+/* Since MiniGUI 5.0.0 */
+#define CMD_TYPE         7
+    #define XVFB_CMD_QUIT   0
+
 #define FIX_HEIGHT       80
 #define FIX_MENU_HEIGHT  29
 /* border fix */

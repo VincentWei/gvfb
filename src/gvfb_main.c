@@ -31,8 +31,6 @@
 ** along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#undef DEBUG
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -619,9 +617,7 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
     switch (event->type) {
     case GDK_BUTTON_PRESS:
         /* mouse button press */
-#ifdef DEBUG
-        printf ("catch GDK_BUTTON_PRESS event\n");
-#endif
+        msg_log ("catch GDK_BUTTON_PRESS event\n");
 
         x = (int) (event->button.x * 100 / gvfbruninfo.zoom_percent);
         y = (int) (event->button.y * 100 / gvfbruninfo.zoom_percent);
@@ -646,9 +642,7 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
 
     case GDK_BUTTON_RELEASE:
         /* mouse button release */
-#ifdef DEBUG
-        printf ("catch GDK_BUTTON_RELEASE event\n");
-#endif
+        msg_log ("catch GDK_BUTTON_RELEASE event\n");
 
         x = (int) (event->button.x * 100 / gvfbruninfo.zoom_percent);
         y = (int) (event->button.y * 100 / gvfbruninfo.zoom_percent);
@@ -713,9 +707,7 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
             FullScreen ();
         }
 
-#ifdef DEBUG
-        printf ("got GDK_KEY_PRESS %x\n", keycode);
-#endif
+        msg_log ("got GDK_KEY_PRESS %x\n", keycode);
 #if 0
         if (gtk_im_context_filter_keypress (gvfbruninfo.im_context, &event->key)) {
             return TRUE;
@@ -758,9 +750,7 @@ gboolean EventProc (GtkWidget * window, GdkEvent * event)
         break;
 
     case GDK_KEY_RELEASE:
-#ifdef DEBUG
-        printf ("catch GDK_KEY_RELEASE event\n");
-#endif
+        msg_log ("catch GDK_KEY_RELEASE event\n");
         SendKeyboardData (event->key.keyval, 0, 0);
         return TRUE;
         break;
@@ -872,9 +862,10 @@ void *CheckEventThread (void *args)
 
         /* 0.1s */
         tv.tv_sec = 0;
-        tv.tv_usec = 100 * 1000;
+        tv.tv_usec = 10 * 1000;
 
         ret = select (maxfd + 1, &rfds, NULL, &efds, &tv);
+        msg_out (LEVEL_0, "retval of select: %d\n", ret);
 
         if (ret < 0) {
 #ifndef WIN32
@@ -885,6 +876,7 @@ void *CheckEventThread (void *args)
 
             msg_out (LEVEL_0, "Failed to select.");
             err_flag = 1;
+            runinfo->running = FALSE;
             break;
         }
         else if (ret == 0) {
@@ -926,6 +918,7 @@ void *CheckEventThread (void *args)
             continue;
         }
         else if (FD_ISSET (runinfo->sockfd, &efds)) {
+            msg_out (LEVEL_0, "exception on fd: %d", runinfo->sockfd);
             runinfo->running = FALSE;
             break;
         }
@@ -1055,9 +1048,7 @@ void *CheckEventThread (void *args)
             break;
 
         case IME_TYPE:
-#ifdef DEBUG
-            printf ("IME_TYPE\n");
-#endif
+            msg_log ("got IME_TYPE\n");
             ret =
                 Recv (runinfo->sockfd, (unsigned char *) &temp, sizeof (int),
                       MSG_TRUNC);
@@ -1072,7 +1063,28 @@ void *CheckEventThread (void *args)
                 runinfo->running = FALSE;
                 break;
             }
+            break;
 
+        case CMD_TYPE:
+            ret =
+                Recv (runinfo->sockfd, (unsigned char *) &temp, sizeof (int),
+                      MSG_TRUNC);
+
+            msg_log ("got CMD_TYPE: retval (%d), cmd (%d)\n", ret, temp);
+
+            if (ret != sizeof (int)) {
+                if (ret < 0) {
+                    msg_out (LEVEL_0, "recv ime type error.");
+                    err_flag = 1;
+                }
+
+                runinfo->running = FALSE;
+                break;
+            }
+            else if (temp == XVFB_CMD_QUIT) {
+                runinfo->running = FALSE;
+                break;
+            }
             break;
 
         default:
