@@ -57,6 +57,7 @@ void msg_log(const char* fmt, ...)
 {
     if (log_fp == NULL) {
         log_fp = fopen (LOGFILE, "a");
+        fprintf (log_fp, "Start to log\n");
     }
 
     if (log_fp) {

@@ -31,8 +31,6 @@
 ** along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#undef DEBUG
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -356,15 +354,14 @@ int main (int argc, char *argv[])
     g_timeout_add (1000 / 100, KeyPressTimeout, NULL);
 
     /* enter the GTK main loop */
-#ifdef DEBUG
     msg_out (LEVEL_0, "gvfb_main.");
-#endif
 
     gtk_main ();
 
     /* end */
     /* close sockfd, free memory etc. */
 
+    msg_out (LEVEL_0, "joining check thread.");
     g_thread_join (checkthread);
 
     UnInit ();
