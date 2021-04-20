@@ -31,8 +31,6 @@
 ** along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#undef DEBUG
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -68,19 +66,19 @@ static void signal_handler (int v)
 #ifdef DEBUG
     switch (v) {
     case SIGHUP:
-        printf ("SIGHUP\n");
+        msg_log ("SIGHUP\n");
         break;
     case SIGPIPE:
-        printf ("SIGPIPE\n");
+        msg_log ("SIGPIPE\n");
         break;
     case SIGTERM:
-        printf ("SIGTERM\n");
+        msg_log ("SIGTERM\n");
         break;
     case SIGINT:
-        printf ("SIGINT\n");
+        msg_log ("SIGINT\n");
         break;
     default:
-        printf ("unknown\n");
+        msg_log ("unknown\n");
         break;
     }
 #endif
@@ -117,20 +115,19 @@ void SetupSignal (void)
 
 int InitLock (int lockkey)
 {
-    lockid = semget (lockkey, 0, 0);
-#ifdef DEBUG
-    printf ("InitLock semget id : %d\n", lockid);
-#endif
+    // WORK AROUND for dirty refresh.
+    if (geteuid () == 0)
+        setuid (1000);
+
+    lockid = semget (lockkey, 1, 0);
+    msg_log ("InitLock semget id from key (%d): %d\n", lockkey, lockid);
 
     return lockid;
 }
 
 void UnInitLock (int shmid)
 {
-#ifdef DEBUG
-    printf ("UnInitLock semctl id : %d\n", lockid);
-#endif
-
+    msg_log ("UnInitLock semctl id : %d\n", lockid);
     semctl (lockid, 0, IPC_RMID, NULL);
 }
 
@@ -143,7 +140,9 @@ void Lock (void)
         sops.sem_op = -1;
         sops.sem_flg = SEM_UNDO;
 
-        semop (lockid, &sops, 1);
+        if (semop (lockid, &sops, 1) < 0) {
+            msg_log ("failed to lock semaphore: %d\n", lockid);
+        }
     }
 }
 
@@ -156,7 +155,9 @@ void UnLock (void)
         sops.sem_op = +1;
         sops.sem_flg = SEM_UNDO;
 
-        semop (lockid, &sops, 1);
+        if (semop (lockid, &sops, 1) < 0) {
+            msg_log ("failed to lock semaphore: %d\n", lockid);
+        }
     }
 }
 
@@ -207,10 +208,9 @@ unsigned char *CreateShareMemory (int key, int data_size)
 
         shm_data = (unsigned char *) shmat (gvfbruninfo.shmid, NULL, 0);
     }
-#ifdef DEBUG
-    printf ("CreateShareMemory : key : %d shmget : %d size : %d\n",
+
+    msg_log ("CreateShareMemory : key : %d shmget : %d size : %d\n",
             key, gvfbruninfo.shmid, data_size);
-#endif
 
     return shm_data;
 }
@@ -221,9 +221,8 @@ void DestroyShareMemory (void)
 
     /* get gvfb header */
     hdr = gvfbruninfo.hdr;
-#ifdef DEBUG
-    printf ("DestroyShareMemory : shmctl : %d\n", gvfbruninfo.shmid);
-#endif
+
+    msg_log ("DestroyShareMemory : shmctl : %d\n", gvfbruninfo.shmid);
 
     if (gvfbruninfo.shmid != -1) {
         assert (hdr != NULL);
