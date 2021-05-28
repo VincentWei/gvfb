@@ -13,7 +13,7 @@ ENDIF (WIN32)
 INCLUDE (FindPkgConfig)
 
 PKG_CHECK_MODULES (X11 x11)
-PKG_CHECK_MODULES (GTK gtk+-2.0 gthread-2.0)
+PKG_CHECK_MODULES (GTK gtk+-2.0 gio-unix-2.0 gthread-2.0)
 
 IF (NOT GTK_FOUND)
     MESSAGE(FATAL_ERROR "Gtk+-2.0 not found")
